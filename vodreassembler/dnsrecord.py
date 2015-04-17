@@ -8,10 +8,13 @@ class DnsRecord(collections.namedtuple('DnsRecord',
   pass
 
 
-def from_dump(f):
+def from_dump(src, filt=None):
   """Read DNS records from DNS record dump."""
+  filt = filt or (lambda x: True)
   while True:
-    l = f.readline()
+    l = src.readline()
     if not l:
       break
-    yield DnsRecord(*l.split())
+    record = DnsRecord(*l.split())
+    if filt(record):
+      yield record
