@@ -14,13 +14,13 @@ def ipv4_to_bytes(addr):
 def ipv4_to_chunk(addr):
   octets = addr.split('.')
   if len(octets) != 4:
-    return False
+    raise ValueError('IPv4 addresses must have 4 octets')
   octets = list(map(int, octets))
   # Every octet must fall in range [0,255]
   assert len(octets) == 4
   for o in octets:
     if not 0 <= o <= 255:
-      return False
+      raise ValueError('Each octet must be an integer within [0,255]')
   length = (octets[0] >> 6) & 0x3
   offset = (octets[0] & 0x3f) * 3
   data = b''.join(map(lambda x: struct.pack('!B', x), octets[1:length+1]))
