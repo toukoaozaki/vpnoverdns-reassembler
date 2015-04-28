@@ -18,9 +18,10 @@ def ipv4_to_chunk(addr):
   octets = list(map(int, octets))
   # Every octet must fall in range [0,255]
   assert len(octets) == 4
-  for o in octets:
+  for i, o in enumerate(octets):
     if not 0 <= o <= 255:
-      raise ValueError('Each octet must be an integer within [0,255]')
+      raise ValueError('Octet {} is {};'
+                       'must be an integer within [0,255]'.format(i+1, o))
   length = (octets[0] >> 6) & 0x3
   offset = (octets[0] & 0x3f) * 3
   data = b''.join(map(lambda x: struct.pack('!B', x), octets[1:length+1]))
