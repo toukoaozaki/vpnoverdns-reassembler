@@ -34,7 +34,7 @@ def normalize_fqdn_suffix(fqdn_suffix):
   return fqdn_suffix
 
 
-class DnsRecordParser:
+class MessageParser:
   def __init__(self, fqdn_suffix=None):
     self._suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
     self._re = regex.compile(
@@ -46,14 +46,14 @@ class DnsRecordParser:
             \s*$'''.format(regex.escape(self._suffix)),
         regex.VERSION1 | regex.VERBOSE)
 
-  def parse(self, record):
-    m = self._re.fullmatch(record.fqdn)
+  def parse(self, dns_record):
+    m = self._re.fullmatch(dns_record.fqdn)
     if not m:
       raise ValueError(
-          "fqdn '{}' is not in the expected format".format(record.fqdn))
+          "fqdn '{}' is not in the expected format".format(dns_record.fqdn))
     variables = dict.fromkeys(m.captures('flag'), True)
     variables.update(zip(m.captures('var'), m.captures('value')))
     return (m.group('version'),
             variables,
-            ipv4_to_chunk(record.value))
+            ipv4_to_chunk(dns_record.value))
 
