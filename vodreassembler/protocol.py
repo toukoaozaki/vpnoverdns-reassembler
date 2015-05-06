@@ -41,7 +41,7 @@ class DnsRecordParser:
         r'''^\s*
               ((?P<var>\w+)-(?P<value>\w+)\.)+  # variables
               v(?P<version>\w+)\.               # version
-              {!s}                            # suffix
+              {!s}                              # suffix
             \s*$'''.format(regex.escape(self._suffix)),
         regex.VERSION1 | regex.VERBOSE)
 
