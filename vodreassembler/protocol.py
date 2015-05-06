@@ -1,5 +1,6 @@
 """VPN over DNS protocol utilities."""
 
+import regex
 import struct
 from vodreassembler import util
 
@@ -24,3 +25,32 @@ def ipv4_to_chunk(addr):
   offset = (octets[0] & 0x3f) * 3
   data = b''.join(map(lambda x: struct.pack('!B', x), octets[1:length+1]))
   return util.DataChunk(data, offset)
+
+def normalize_fqdn_suffix(fqdn_suffix):
+  if not fqdn_suffix.endswith('.'):
+    fqdn_suffix += '.'
+  if fqdn_suffix.startswith('.'):
+    fqdn_suffix = fqdn_suffix[1:]
+  return fqdn_suffix
+
+
+class DnsRecordParser:
+  def __init__(self, fqdn_suffix=None):
+    self._suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
+    self._re = regex.compile(
+        r'''^\s*
+              ((?P<var>\w+)-(?P<value>\w+)\.)+  # variables
+              v(?P<version>\w+)\.               # version
+              {!s}                            # suffix
+            \s*$'''.format(regex.escape(self._suffix)),
+        regex.VERSION1 | regex.VERBOSE)
+
+  def parse(self, record):
+    m = self._re.fullmatch(record.fqdn)
+    if not m:
+      raise ValueError(
+          "fqdn '{}' is not in the expected format".format(record.fqdn))
+    return (m.group('version'),
+            dict(zip(m.captures('var'), m.captures('value'))),
+            ipv4_to_chunk(record.value))
+

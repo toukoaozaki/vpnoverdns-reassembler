@@ -1,5 +1,7 @@
 import unittest
+from vodreassembler import dnsrecord
 from vodreassembler import protocol
+from vodreassembler import util
 
 
 class TestProtocol(unittest.TestCase):
@@ -55,6 +57,45 @@ class TestProtocol(unittest.TestCase):
       protocol.ipv4_to_chunk('1.128.300.1')
     with self.assertRaises(ValueError):
       protocol.ipv4_to_chunk('1.128.64.1999')
+
+
+class TestDnsRecordParser(unittest.TestCase):
+  DEFAULT_RECORD = dnsrecord.DnsRecord(
+      'foo-12345678.bar-00000000.v0.tun.vpnoverdns.com.',
+      'IN', 'A', '192.178.115.214')
+  CUSTOM_RECORD = dnsrecord.DnsRecord(
+      'foo-12345678.bar-00000000.v1.illinois.edu.',
+      'IN', 'A', '192.178.115.214')
+  VARIABLES = {'foo': '12345678', 'bar': '00000000'}
+  DATA = util.DataChunk(b'\xb2\x73\xd6', 0)
+
+  def test_default_suffix(self):
+    parser = protocol.DnsRecordParser()
+    version, variables, data = parser.parse(self.DEFAULT_RECORD)
+    self.assertEquals('0', version)
+    self.assertEquals(self.VARIABLES, variables)
+    self.assertEquals(self.DATA, data)
+
+  def test_custom_suffix_nodot(self):
+    parser = protocol.DnsRecordParser(fqdn_suffix='illinois.edu')
+    version, variables, data = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', version)
+    self.assertEquals(self.VARIABLES, variables)
+    self.assertEquals(self.DATA, data)
+
+  def test_custom_suffix_begindot(self):
+    parser = protocol.DnsRecordParser(fqdn_suffix='.illinois.edu')
+    version, variables, data = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', version)
+    self.assertEquals(self.VARIABLES, variables)
+    self.assertEquals(self.DATA, data)
+
+  def test_custom_suffix_enddot(self):
+    parser = protocol.DnsRecordParser(fqdn_suffix='illinois.edu.')
+    version, variables, data = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', version)
+    self.assertEquals(self.VARIABLES, variables)
+    self.assertEquals(self.DATA, data)
 
 
 if __name__ == '__main__':
