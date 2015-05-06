@@ -97,6 +97,17 @@ class TestDnsRecordParser(unittest.TestCase):
     self.assertEquals(self.VARIABLES, variables)
     self.assertEquals(self.DATA, data)
 
+  def test_flags(self):
+    parser = protocol.DnsRecordParser()
+    record = dnsrecord.DnsRecord('ac.' + self.DEFAULT_RECORD.fqdn,
+                                 *self.DEFAULT_RECORD[1:])
+    expected_vars = self.VARIABLES
+    expected_vars['ac'] = True
+    version, variables, data = parser.parse(record)
+    self.assertEquals('0', version)
+    self.assertEquals(expected_vars, variables)
+    self.assertEquals(self.DATA, data)
+
 
 if __name__ == '__main__':
   unittest.main()

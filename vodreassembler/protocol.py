@@ -39,6 +39,7 @@ class DnsRecordParser:
     self._suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
     self._re = regex.compile(
         r'''^\s*
+              ((?P<flag>\w+)\.)*                # flags
               ((?P<var>\w+)-(?P<value>\w+)\.)+  # variables
               v(?P<version>\w+)\.               # version
               {!s}                              # suffix
@@ -50,7 +51,9 @@ class DnsRecordParser:
     if not m:
       raise ValueError(
           "fqdn '{}' is not in the expected format".format(record.fqdn))
+    variables = dict.fromkeys(m.captures('flag'), True)
+    variables.update(zip(m.captures('var'), m.captures('value')))
     return (m.group('version'),
-            dict(zip(m.captures('var'), m.captures('value'))),
+            variables,
             ipv4_to_chunk(record.value))
 
