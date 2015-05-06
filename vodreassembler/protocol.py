@@ -1,5 +1,6 @@
 """VPN over DNS protocol utilities."""
 
+import collections
 import regex
 import struct
 from vodreassembler import util
@@ -34,6 +35,18 @@ def normalize_fqdn_suffix(fqdn_suffix):
   return fqdn_suffix
 
 
+class Message(collections.namedtuple('Message', ['version', 'type',
+                                                 'variables', 'data'])):
+  def __new__(cls, version, variables, data):
+    msgtype = cls.deduce_type(version, variables, data)
+    return super(Message, cls).__new__(cls, version, msgtype, variables, data)
+
+  @classmethod
+  def deduce_type(cls, version, variables, data):
+    # TODO(toukoaozaki): implement message type deduction
+    return 'Unknown'
+
+
 class MessageParser:
   def __init__(self, fqdn_suffix=None):
     self._suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
@@ -53,7 +66,6 @@ class MessageParser:
           "fqdn '{}' is not in the expected format".format(dns_record.fqdn))
     variables = dict.fromkeys(m.captures('flag'), True)
     variables.update(zip(m.captures('var'), m.captures('value')))
-    return (m.group('version'),
-            variables,
-            ipv4_to_chunk(dns_record.value))
+    return Message(m.group('version'), variables,
+                   ipv4_to_chunk(dns_record.value))
 

@@ -71,31 +71,31 @@ class TestMessageParser(unittest.TestCase):
 
   def test_default_suffix(self):
     parser = protocol.MessageParser()
-    version, variables, data = parser.parse(self.DEFAULT_RECORD)
-    self.assertEquals('0', version)
-    self.assertEquals(self.VARIABLES, variables)
-    self.assertEquals(self.DATA, data)
+    msg = parser.parse(self.DEFAULT_RECORD)
+    self.assertEquals('0', msg.version)
+    self.assertEquals(self.VARIABLES, msg.variables)
+    self.assertEquals(self.DATA, msg.data)
 
   def test_custom_suffix_nodot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu')
-    version, variables, data = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', version)
-    self.assertEquals(self.VARIABLES, variables)
-    self.assertEquals(self.DATA, data)
+    msg = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', msg.version)
+    self.assertEquals(self.VARIABLES, msg.variables)
+    self.assertEquals(self.DATA, msg.data)
 
   def test_custom_suffix_begindot(self):
     parser = protocol.MessageParser(fqdn_suffix='.illinois.edu')
-    version, variables, data = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', version)
-    self.assertEquals(self.VARIABLES, variables)
-    self.assertEquals(self.DATA, data)
+    msg = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', msg.version)
+    self.assertEquals(self.VARIABLES, msg.variables)
+    self.assertEquals(self.DATA, msg.data)
 
   def test_custom_suffix_enddot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu.')
-    version, variables, data = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', version)
-    self.assertEquals(self.VARIABLES, variables)
-    self.assertEquals(self.DATA, data)
+    msg = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('1', msg.version)
+    self.assertEquals(self.VARIABLES, msg.variables)
+    self.assertEquals(self.DATA, msg.data)
 
   def test_flags(self):
     parser = protocol.MessageParser()
@@ -103,10 +103,10 @@ class TestMessageParser(unittest.TestCase):
                                  *self.DEFAULT_RECORD[1:])
     expected_vars = self.VARIABLES
     expected_vars['ac'] = True
-    version, variables, data = parser.parse(record)
-    self.assertEquals('0', version)
-    self.assertEquals(expected_vars, variables)
-    self.assertEquals(self.DATA, data)
+    msg = parser.parse(record)
+    self.assertEquals('0', msg.version)
+    self.assertEquals(expected_vars, msg.variables)
+    self.assertEquals(self.DATA, msg.data)
 
 
 if __name__ == '__main__':
