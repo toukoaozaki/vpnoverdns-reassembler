@@ -1,11 +1,20 @@
 """VPN over DNS protocol utilities."""
 
 import collections
+import enum
 import regex
 import struct
 from vodreassembler import util
 
 DEFAULT_FQDN_SUFFIX = 'tun.vpnoverdns.com.'
+
+
+class Error(Exception):
+  pass
+
+
+class UnknownVersionError(Error):
+  pass
 
 
 def ipv4_to_bytes(addr):
@@ -35,16 +44,42 @@ def normalize_fqdn_suffix(fqdn_suffix):
   return fqdn_suffix
 
 
+@enum.unique
+class MessageType(enum.Enum):
+  unknown = 0
+  open_ticket = 1
+  request_data = 2
+  check_request = 3
+  fetch_response = 4
+  close_ticket = 5
+
+
 class Message(collections.namedtuple('Message', ['version', 'type',
                                                  'variables', 'data'])):
-  def __new__(cls, version, variables, data):
+  @classmethod
+  def create(cls, version, variables, data):
     msgtype = cls.deduce_type(version, variables, data)
-    return super(Message, cls).__new__(cls, version, msgtype, variables, data)
+    return cls(version, msgtype, variables, data)
 
   @classmethod
   def deduce_type(cls, version, variables, data):
-    # TODO(toukoaozaki): implement message type deduction
-    return 'Unknown'
+    if version != '0':
+      raise UnknownVersionError(version)
+    keys = set(variables.keys())
+    if 'retry' in keys:
+      # ignore clearly optional variables
+      keys.remove('retry')
+    if keys == {'sz', 'rn', 'id'}:
+      return MessageType.open_ticket
+    elif keys == {'bf', 'wr', 'id'}:
+      return MessageType.request_data
+    elif keys == {'ck', 'id'}:
+      return MessageType.check_request
+    elif keys == {'ln', 'rd', 'id'}:
+      return MessageType.fetch_response
+    elif keys == {'ac', 'id'}:
+      return MessageType.close_ticket
+    return MessageType.unknown
 
 
 class MessageParser:
@@ -66,6 +101,6 @@ class MessageParser:
           "fqdn '{}' is not in the expected format".format(dns_record.fqdn))
     variables = dict.fromkeys(m.captures('flag'), True)
     variables.update(zip(m.captures('var'), m.captures('value')))
-    return Message(m.group('version'), variables,
-                   ipv4_to_chunk(dns_record.value))
+    return Message.create(m.group('version'), variables,
+                          ipv4_to_chunk(dns_record.value))
 

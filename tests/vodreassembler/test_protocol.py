@@ -64,7 +64,7 @@ class TestMessageParser(unittest.TestCase):
       'foo-12345678.bar-00000000.v0.tun.vpnoverdns.com.',
       'IN', 'A', '192.178.115.214')
   CUSTOM_RECORD = dnsrecord.DnsRecord(
-      'foo-12345678.bar-00000000.v1.illinois.edu.',
+      'foo-12345678.bar-00000000.v0.illinois.edu.',
       'IN', 'A', '192.178.115.214')
   VARIABLES = {'foo': '12345678', 'bar': '00000000'}
   DATA = util.DataChunk(b'\xb2\x73\xd6', 0)
@@ -79,21 +79,21 @@ class TestMessageParser(unittest.TestCase):
   def test_custom_suffix_nodot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu')
     msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', msg.version)
+    self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
     self.assertEquals(self.DATA, msg.data)
 
   def test_custom_suffix_begindot(self):
     parser = protocol.MessageParser(fqdn_suffix='.illinois.edu')
     msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', msg.version)
+    self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
     self.assertEquals(self.DATA, msg.data)
 
   def test_custom_suffix_enddot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu.')
     msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('1', msg.version)
+    self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
     self.assertEquals(self.DATA, msg.data)
 
@@ -107,6 +107,64 @@ class TestMessageParser(unittest.TestCase):
     self.assertEquals('0', msg.version)
     self.assertEquals(expected_vars, msg.variables)
     self.assertEquals(self.DATA, msg.data)
+
+
+class TestMessage(unittest.TestCase):
+  OPEN_TICKET_VARS = {'sz': '44', 'rn': '12345678', 'id': '00000001'}
+  REQUEST_DATA_VARS = {'bf': 'abcdefabcdefabcdef', 'wr': '00000000',
+                       'id': '98765432'}
+  CHECK_REQUEST_VARS = {'ck': '00000020', 'id': '98765432'}
+  FETCH_RESPONSE_VARS = {'ln': '00000048', 'rd': '00000000', 'id': '98765432'}
+  CLOSE_TICKET_VARS = {'ac': True, 'id': '98765432'}
+
+  OPEN_TICKET_VARS_RETRY = {'sz': '44', 'rn': '12345678', 'id': '00000001',
+                            'retry': '1'}
+  REQUEST_DATA_VARS_RETRY = {'bf': 'abcdefabcdefabcdef', 'wr': '00000000',
+                             'id': '98765432', 'retry': '1'}
+  CHECK_REQUEST_VARS_RETRY = {'ck': '00000020', 'id': '98765432', 'retry': '1'}
+  FETCH_RESPONSE_VARS_RETRY = {'ln': '00000048', 'rd': '00000000',
+                               'id': '98765432', 'retry': '1'}
+  CLOSE_TICKET_VARS_RETRY = {'ac': True, 'id': '98765432', 'retry': '1'}
+
+  def test_type_deduction_unknown_version(self):
+    with self.assertRaises(protocol.UnknownVersionError):
+      # Version 1 is not known to the implementation
+      protocol.Message.deduce_type('1', self.OPEN_TICKET_VARS,
+                                   util.DataChunk(b'\x00', 0))
+
+  def test_type_deduction(self):
+    msgtype = protocol.Message.deduce_type('0', self.OPEN_TICKET_VARS,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.open_ticket, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.REQUEST_DATA_VARS,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.request_data, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.CHECK_REQUEST_VARS,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.check_request, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.FETCH_RESPONSE_VARS,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.fetch_response, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.CLOSE_TICKET_VARS,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.close_ticket, msgtype)
+
+  def test_type_deduction_retries(self):
+    msgtype = protocol.Message.deduce_type('0', self.OPEN_TICKET_VARS_RETRY,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.open_ticket, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.REQUEST_DATA_VARS_RETRY,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.request_data, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.CHECK_REQUEST_VARS_RETRY,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.check_request, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.FETCH_RESPONSE_VARS_RETRY,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.fetch_response, msgtype)
+    msgtype = protocol.Message.deduce_type('0', self.CLOSE_TICKET_VARS_RETRY,
+                                           util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertEquals(protocol.MessageType.close_ticket, msgtype)
 
 
 if __name__ == '__main__':
