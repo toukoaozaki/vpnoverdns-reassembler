@@ -53,16 +53,8 @@ class MessageType(enum.Enum):
   fetch_response = 4
   close_ticket = 5
 
-
-class Message(collections.namedtuple('Message', ['version', 'type',
-                                                 'variables', 'data'])):
-  @classmethod
-  def create(cls, version, variables, data):
-    msgtype = cls.deduce_type(version, variables, data)
-    return cls(version, msgtype, variables, data)
-
-  @classmethod
-  def deduce_type(cls, version, variables, data):
+  @staticmethod
+  def deduce(version, variables, data):
     if version != '0':
       raise UnknownVersionError(version)
     keys = set(variables.keys())
@@ -80,6 +72,20 @@ class Message(collections.namedtuple('Message', ['version', 'type',
     elif keys == {'ac', 'id'}:
       return MessageType.close_ticket
     return MessageType.unknown
+
+
+class Message(collections.namedtuple('Message', ['version', 'type',
+                                                 'variables', 'data'])):
+  @classmethod
+  def create(cls, version, variables, data):
+    msgtype = MessageType.deduce(version, variables, data)
+    variables, data = cls.normalize_data(msgtype, variables, data)
+    return cls(version, msgtype, variables, data)
+
+  @staticmethod
+  def normalize_data(msgtype, variables, data):
+    # TODO(toukoaozaki): implement this
+    return variables, data
 
 
 class MessageParser:

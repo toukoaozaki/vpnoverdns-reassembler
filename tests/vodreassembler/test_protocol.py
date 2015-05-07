@@ -109,7 +109,7 @@ class TestMessageParser(unittest.TestCase):
     self.assertEquals(self.DATA, msg.data)
 
 
-class TestMessage(unittest.TestCase):
+class TestMessageType(unittest.TestCase):
   OPEN_TICKET_VARS = {'sz': '44', 'rn': '12345678', 'id': '00000001'}
   REQUEST_DATA_VARS = {'bf': 'abcdefabcdefabcdef', 'wr': '00000000',
                        'id': '98765432'}
@@ -129,41 +129,41 @@ class TestMessage(unittest.TestCase):
   def test_type_deduction_unknown_version(self):
     with self.assertRaises(protocol.UnknownVersionError):
       # Version 1 is not known to the implementation
-      protocol.Message.deduce_type('1', self.OPEN_TICKET_VARS,
-                                   util.DataChunk(b'\x00', 0))
+      protocol.MessageType.deduce('1', self.OPEN_TICKET_VARS,
+                                  util.DataChunk(b'\x00', 0))
 
   def test_type_deduction(self):
-    msgtype = protocol.Message.deduce_type('0', self.OPEN_TICKET_VARS,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.OPEN_TICKET_VARS,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.open_ticket, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.REQUEST_DATA_VARS,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.REQUEST_DATA_VARS,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.request_data, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.CHECK_REQUEST_VARS,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.CHECK_REQUEST_VARS,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.check_request, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.FETCH_RESPONSE_VARS,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.FETCH_RESPONSE_VARS,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.fetch_response, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.CLOSE_TICKET_VARS,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.CLOSE_TICKET_VARS,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.close_ticket, msgtype)
 
   def test_type_deduction_retries(self):
-    msgtype = protocol.Message.deduce_type('0', self.OPEN_TICKET_VARS_RETRY,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.OPEN_TICKET_VARS_RETRY,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.open_ticket, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.REQUEST_DATA_VARS_RETRY,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.REQUEST_DATA_VARS_RETRY,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.request_data, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.CHECK_REQUEST_VARS_RETRY,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.CHECK_REQUEST_VARS_RETRY,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.check_request, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.FETCH_RESPONSE_VARS_RETRY,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.FETCH_RESPONSE_VARS_RETRY,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.fetch_response, msgtype)
-    msgtype = protocol.Message.deduce_type('0', self.CLOSE_TICKET_VARS_RETRY,
-                                           util.DataChunk(b'\x00\x00\x00', 0))
+    msgtype = protocol.MessageType.deduce('0', self.CLOSE_TICKET_VARS_RETRY,
+                                          util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.close_ticket, msgtype)
 
 
