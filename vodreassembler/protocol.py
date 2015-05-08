@@ -76,21 +76,21 @@ class MessageType(enum.Enum):
 
 
 class Message(collections.namedtuple('Message', ['version', 'type',
-                                                 'variables', 'data'])):
+                                                 'variables', 'payload'])):
   @classmethod
-  def create(cls, version, variables, data):
-    msgtype = MessageType.deduce(version, variables, data)
-    variables, data = cls.normalize_data(msgtype, variables, data)
-    return cls(version, msgtype, variables, data)
+  def create(cls, version, variables, payload):
+    msgtype = MessageType.deduce(version, variables, payload)
+    variables, payload = cls.normalize_data(msgtype, variables, payload)
+    return cls(version, msgtype, variables, payload)
 
   @staticmethod
-  def normalize_data(msgtype, variables, data):
+  def normalize_data(msgtype, variables, payload):
     for key in variables:
       if key in {'id', 'sz', 'rn', 'wr', 'ck', 'ln', 'rd', 'retry'}:
         variables[key] = int(variables[key])
       elif key in {'bf'}:
         variables[key] = binascii.unhexlify(variables[key])
-    return variables, data
+    return variables, payload
 
 
 class MessageParser:

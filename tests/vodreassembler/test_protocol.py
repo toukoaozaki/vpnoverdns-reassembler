@@ -74,28 +74,28 @@ class TestMessageParser(unittest.TestCase):
     msg = parser.parse(self.DEFAULT_RECORD)
     self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.data)
+    self.assertEquals(self.DATA, msg.payload)
 
   def test_custom_suffix_nodot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu')
     msg = parser.parse(self.CUSTOM_RECORD)
     self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.data)
+    self.assertEquals(self.DATA, msg.payload)
 
   def test_custom_suffix_begindot(self):
     parser = protocol.MessageParser(fqdn_suffix='.illinois.edu')
     msg = parser.parse(self.CUSTOM_RECORD)
     self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.data)
+    self.assertEquals(self.DATA, msg.payload)
 
   def test_custom_suffix_enddot(self):
     parser = protocol.MessageParser(fqdn_suffix='illinois.edu.')
     msg = parser.parse(self.CUSTOM_RECORD)
     self.assertEquals('0', msg.version)
     self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.data)
+    self.assertEquals(self.DATA, msg.payload)
 
   def test_flags(self):
     parser = protocol.MessageParser()
@@ -106,7 +106,7 @@ class TestMessageParser(unittest.TestCase):
     msg = parser.parse(record)
     self.assertEquals('0', msg.version)
     self.assertEquals(expected_vars, msg.variables)
-    self.assertEquals(self.DATA, msg.data)
+    self.assertEquals(self.DATA, msg.payload)
 
 
 class TestMessageType(unittest.TestCase):
