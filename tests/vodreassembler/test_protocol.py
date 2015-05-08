@@ -166,6 +166,37 @@ class TestMessageType(unittest.TestCase):
                                           util.DataChunk(b'\x00\x00\x00', 0))
     self.assertEquals(protocol.MessageType.close_ticket, msgtype)
 
+  def test_normalize_data(self):
+    variables, _ = protocol.Message.normalize_data(
+        protocol.MessageType.open_ticket, self.OPEN_TICKET_VARS_RETRY,
+        util.DataChunk(b'\x00\x00\x00', 0))
+    for var, data in variables.items():
+      self.assertIsInstance(data, int)
+    variables, _ = protocol.Message.normalize_data(
+        protocol.MessageType.open_ticket, self.REQUEST_DATA_VARS_RETRY,
+        util.DataChunk(b'\x00\x00\x00', 0))
+    for var, data in variables.items():
+      if var == 'bf':
+        self.assertEquals(b'\xab\xcd\xef\xab\xcd\xef\xab\xcd\xef', data)
+      else:
+        self.assertIsInstance(data, int)
+    variables, _ = protocol.Message.normalize_data(
+        protocol.MessageType.open_ticket, self.CHECK_REQUEST_VARS_RETRY,
+        util.DataChunk(b'\x00\x00\x00', 0))
+    for var, data in variables.items():
+      self.assertIsInstance(data, int)
+    variables, _ = protocol.Message.normalize_data(
+        protocol.MessageType.open_ticket, self.FETCH_RESPONSE_VARS_RETRY,
+        util.DataChunk(b'\x00\x00\x00', 0))
+    for var, data in variables.items():
+      self.assertIsInstance(data, int)
+    variables, _ = protocol.Message.normalize_data(
+        protocol.MessageType.open_ticket, self.CLOSE_TICKET_VARS_RETRY,
+        util.DataChunk(b'\x00\x00\x00', 0))
+    self.assertIsInstance(variables['retry'], int)
+    self.assertIsInstance(variables['ac'], bool)  # unchanged
+    self.assertIsInstance(variables['id'], int)
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -1,5 +1,6 @@
 """VPN over DNS protocol utilities."""
 
+import binascii
 import collections
 import enum
 import regex
@@ -84,7 +85,11 @@ class Message(collections.namedtuple('Message', ['version', 'type',
 
   @staticmethod
   def normalize_data(msgtype, variables, data):
-    # TODO(toukoaozaki): implement this
+    for key in variables:
+      if key in {'id', 'sz', 'rn', 'wr', 'ck', 'ln', 'rd', 'retry'}:
+        variables[key] = int(variables[key])
+      elif key in {'bf'}:
+        variables[key] = binascii.unhexlify(variables[key])
     return variables, data
 
 
