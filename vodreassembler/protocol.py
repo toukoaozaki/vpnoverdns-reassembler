@@ -92,6 +92,14 @@ class Message(collections.namedtuple('Message', ['version', 'type',
         variables[key] = binascii.unhexlify(variables[key])
     return variables, payload
 
+  @property
+  def error(self):
+    if self.type is MessageType.fetch_response:
+      return None
+    if len(self.payload.data) == 2 and self.payload.data.startswith(b'E'):
+      return self.payload.data[1]
+    return None
+
 
 class MessageParser:
   def __init__(self, fqdn_suffix=None):

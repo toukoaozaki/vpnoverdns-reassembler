@@ -197,6 +197,20 @@ class TestMessageType(unittest.TestCase):
     self.assertIsInstance(variables['ac'], bool)  # unchanged
     self.assertIsInstance(variables['id'], int)
 
+  def test_error(self):
+    error_payload = util.DataChunk(b'E\x0a', 0)
+    msg = protocol.Message.create('0', self.OPEN_TICKET_VARS, error_payload)
+    self.assertEquals(10, msg.error)
+    msg = protocol.Message.create('0', self.REQUEST_DATA_VARS, error_payload)
+    self.assertEquals(10, msg.error)
+    msg = protocol.Message.create('0', self.CHECK_REQUEST_VARS, error_payload)
+    self.assertEquals(10, msg.error)
+    msg = protocol.Message.create('0', self.FETCH_RESPONSE_VARS, error_payload)
+    # fetch_response returns binary data; error encoding not possible
+    self.assertIsNone(msg.error) 
+    msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, error_payload)
+    self.assertEquals(10, msg.error)
+
 
 if __name__ == '__main__':
   unittest.main()
