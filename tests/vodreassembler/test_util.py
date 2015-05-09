@@ -36,6 +36,12 @@ class TestDataAssembler(unittest.TestCase):
   def test_length_deduction(self):
     assembler = util.DataAssembler(3)
     self.assertIsNone(assembler.length)
+    assembler.add(b'\xff\xfe', 0)
+    self.assertEquals(2, assembler.length)
+    self.assertEquals(b'\xff\xfe', assembler.getbytes())
+
+    assembler = util.DataAssembler(3)
+    self.assertIsNone(assembler.length)
     assembler.add(b'\xff\xfe\xfd', 0)
     self.assertIsNone(assembler.length)
     assembler.add(b'\x01\x02', 6)
@@ -47,8 +53,6 @@ class TestDataAssembler(unittest.TestCase):
     assembler = util.DataAssembler(3)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00' * (assembler.alignment + 1), 0)
-    with self.assertRaises(ValueError):
-      assembler.add(b'\x00' * (assembler.alignment - 1), 0)
     assembler.add(b'\xff\xfe\xfd', 3)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00' * (assembler.alignment + 1), 0)

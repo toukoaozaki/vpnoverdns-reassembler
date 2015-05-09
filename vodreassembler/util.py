@@ -111,10 +111,8 @@ class DataAssembler:
     assert self._storage.tell() == offset
     self._storage.write(data)
 
-  def _is_last_chunk(self, offset, length):
-    if self._length is None:
-      return offset >= self._alignment * len(self._has_chunk)
-    return offset + self._alignment >= self._length
+  def _is_last_chunk(self, chunk_index):
+    return chunk_index >= len(self._has_chunk) - 1
 
   def _verify_chunk_params(self, length, offset):
     assert length >= 0
@@ -141,13 +139,12 @@ class DataAssembler:
       # length is unknown.
       assert self._length is None
 
-    if self._is_last_chunk(offset, length):
-      if self._length and offset + length != self._length:
+    if self._is_last_chunk(chunk_index):
+      if self._length is not None and offset + length != self._length:
         # This is the last chunk, which should fill the buffer without gap or
         # overflow.
         raise ValueError('incorrect length {} for the last chunk'.format(length))
-    else:
-      if length != self._alignment:
+    elif length != self._alignment:
         # Not the last chunk; data length must match alignment.
         raise ValueError('length of every chunk but the last '
                          'must match alignment.')
