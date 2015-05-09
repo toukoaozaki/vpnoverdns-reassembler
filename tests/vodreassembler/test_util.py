@@ -89,17 +89,23 @@ class TestDataAssembler(unittest.TestCase):
     assembler.add(b'\x00\x01\x00', 3)
     with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00\x02\x00', 3)
+    assembler.add(b'\x00\x01\x00', 3)  # same content
     assembler.add(b'\x00\x03\x00', 0)
     with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00\x04\x00', 0)
+    assembler.add(b'\x00\x03\x00', 0)  # same content
     assembler.add(b'\x00\x05', 6)
     with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00\x06', 6)
-    with self.assertRaises(util.ChunkCollisionError):
+    # Collision with incorrect size should be handled as ValueError.
+    # Note that the previous add has determined the length the whole data.
+    with self.assertRaises(ValueError):
       assembler.add(b'\x00', 6)
-    # Collision with too large chunk should be handled as ValueError.
+    with self.assertRaises(ValueError):
+      assembler.add(b'\x00\x00\x00', 6)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00\x00\x00\x00', 6)
+    assembler.add(b'\x00\x05', 6)  # same content
     self.assertEquals(b'\x00\x03\x00\x00\x01\x00\x00\x05',
                       assembler.getbytes())
 

@@ -98,24 +98,14 @@ class DataAssembler:
     return self._storage.read()
 
   def add(self, data, offset):
+    self._verify_chunk_params(data, offset)
+    if self._data_already_added(data, offset):
+      return
+    self._update_bitmap(data, offset)
+    self._write_data(data, offset)
+
+  def _verify_chunk_params(self, data, offset):
     length = len(data)
-    self._verify_chunk_params(length, offset)
-    self._update_bitmap(length, offset)
-
-    curr = self._storage.seek(offset)
-    if curr < offset:
-      # Seek to the offset failed somehow. Try padding to fill in the gap.
-      self._storage.write(b'\x00' * (offset - curr))
-    if self._storage.tell() != offset:
-      raise RuntimeError('failed to seek to offset {}'.format(offset))
-    assert self._storage.tell() == offset
-    self._storage.write(data)
-
-  def _is_last_chunk(self, chunk_index):
-    return chunk_index >= len(self._has_chunk) - 1
-
-  def _verify_chunk_params(self, length, offset):
-    assert length >= 0
 
     if offset < 0:
       raise ValueError('offset must be non-negative')
@@ -130,15 +120,6 @@ class DataAssembler:
       raise ValueError('length of the chunk must not exceed the alignment')
 
     chunk_index = offset // self._alignment
-    try:
-      if self._has_chunk[chunk_index]:
-        raise ChunkCollisionError('chunk at offset {} '
-                                  'has been already added'.format(offset))
-    except IndexError:
-      # Offset is already checked above, so the only case should be when the
-      # length is unknown.
-      assert self._length is None
-
     if self._is_last_chunk(chunk_index):
       if self._length is not None and offset + length != self._length:
         # This is the last chunk, which should fill the buffer without gap or
@@ -149,9 +130,12 @@ class DataAssembler:
         raise ValueError('length of every chunk but the last '
                          'must match alignment.')
 
-  def _update_bitmap(self, length, offset):
-    assert length >= 0
+  def _is_last_chunk(self, chunk_index):
+    return chunk_index >= len(self._has_chunk) - 1
+
+  def _update_bitmap(self, data, offset):
     assert offset >= 0
+    length = len(data)
 
     chunk_index = offset // self._alignment
     if chunk_index >= len(self._has_chunk):
@@ -164,6 +148,37 @@ class DataAssembler:
     if self._length is None and length < self._alignment:
       # This must be the last chunk; now we know the length.
       self._length = offset + length
+
+  def _data_already_added(self, data, offset):
+    # If we have seen the chunk before, check whether content matches.
+    # It's an error they don't match.
+    assert offset % self._alignment == 0
+    chunk_index = offset // self._alignment
+    try:
+      if not self._has_chunk[chunk_index]:
+        return False
+    except IndexError:
+      return False
+    curr_data = self._read_data(offset, self._alignment)
+    if data != curr_data:
+      raise ChunkCollisionError('chunk at offset {} has been already added '
+                                'with different content'.format(offset))
+    return True
+
+  def _read_data(self, offset, length):
+    curr = self._storage.seek(offset)
+    assert curr == offset
+    return self._storage.read(length)
+
+  def _write_data(self, data, offset):
+    curr = self._storage.seek(offset)
+    if curr < offset:
+      # Seek to the offset failed somehow. Try padding to fill in the gap.
+      self._storage.write(b'\x00' * (offset - curr))
+    if self._storage.tell() != offset:
+      raise RuntimeError('failed to seek to offset {}'.format(offset))
+    assert self._storage.tell() == offset
+    self._storage.write(data)
 
   def add_chunk(self, chunk):
     self.add(*chunk)
