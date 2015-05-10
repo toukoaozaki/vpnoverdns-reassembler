@@ -143,8 +143,8 @@ class DataAssembler:
     if offset < 0:
       raise ValueError('offset must be non-negative')
     elif self._length is not None and offset >= self._length:
-      raise ChunkPastEndError('chunk at offset {} '
-                              'is past the end of expected range')
+      raise ChunkPastEndError('chunk at offset {} is '
+                              'past the end of expected range'.format(offset))
 
     if offset % self._alignment != 0:
       raise ValueError('offset not aligned by {} bytes'.format(self._alignment))
