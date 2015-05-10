@@ -224,8 +224,7 @@ class TestMessage(unittest.TestCase):
     msg = protocol.Message.create('0', self.CHECK_REQUEST_VARS, error_payload)
     self.assertEquals(10, msg.error)
     msg = protocol.Message.create('0', self.FETCH_RESPONSE_VARS, error_payload)
-    # fetch_response returns binary data; error encoding not possible
-    self.assertIsNone(msg.error) 
+    self.assertEquals(10, msg.error)
     msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, error_payload)
     self.assertEquals(10, msg.error)
 

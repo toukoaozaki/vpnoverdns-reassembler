@@ -3,6 +3,7 @@
 import binascii
 import collections
 import enum
+import itertools
 import regex
 import struct
 from vodreassembler import util
@@ -26,17 +27,17 @@ def ipv4_to_chunk(addr):
   octets = addr.split('.')
   if len(octets) != 4:
     raise ValueError('IPv4 addresses must have 4 octets')
-  octets = list(map(int, octets))
-  # Every octet must fall in range [0,255]
-  assert len(octets) == 4
-  for i, o in enumerate(octets):
-    if not 0 <= o <= 255:
-      raise ValueError('Octet {} is {};'
-                       'must be an integer within [0,255]'.format(i+1, o))
-  length = (octets[0] >> 6) & 0x3
-  offset = (octets[0] & 0x3f) * 3
-  data = b''.join(map(lambda x: struct.pack('!B', x), octets[1:length+1]))
-  return util.DataChunk(data, offset)
+  octets = map(int, octets)
+  try:
+    data = ipv4_to_chunk.packer.pack(*octets)
+  except struct.error as e:
+    raise ValueError('every octet must be within [0,255]') from e
+
+  length = (data[0] >> 6) & 0x3
+  offset = (data[0] & 0x3f) * 3
+  return util.DataChunk(data[1:length+1], offset)
+
+ipv4_to_chunk.packer = struct.Struct('!BBBB')
 
 def chunk_to_ipv4(chunk):
   if not isinstance(chunk, util.DataChunk):
@@ -117,8 +118,9 @@ class Message(collections.namedtuple('Message', ['version', 'type',
 
   @property
   def error(self):
-    if self.type is MessageType.fetch_response:
-      return None
+    # Unfortunately, we currently don't have an easy way to find out whether
+    # in a fetch_response payload. Simply wish the byte sequences 69 ## doesn't
+    # appear in the payload.
     if len(self.payload.data) == 2 and self.payload.data.startswith(b'E'):
       return self.payload.data[1] or None
     return None
