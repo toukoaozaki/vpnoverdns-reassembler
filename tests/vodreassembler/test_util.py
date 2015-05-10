@@ -56,7 +56,7 @@ class TestDataAssembler(unittest.TestCase):
     assembler.add(b'\xff\xfe\xfd', 3)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00' * (assembler.alignment + 1), 0)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00' * (assembler.alignment - 1), 0)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00' * (assembler.alignment + 1), 6)
@@ -68,17 +68,17 @@ class TestDataAssembler(unittest.TestCase):
       assembler.add(b'\x00\x00\x00\x00', 0)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00\x00\x00\x00', 3)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00', 3)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00\x00\x00', 3)
     assembler.add(b'\xba\xbe', 3)
     self.assertEquals(b'\x00\x00\x00\xba\xbe',
                       assembler.getbytes(incomplete=True))
     assembler = util.DataAssembler(3, length=6)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00', 3)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00\x00', 3)
     assembler.add(b'\xfe\xba\xbe', 3)
     self.assertEquals(b'\x00\x00\x00\xfe\xba\xbe',
@@ -97,12 +97,12 @@ class TestDataAssembler(unittest.TestCase):
     assembler.add(b'\x00\x05', 6)
     with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00\x06', 6)
-    # Collision with incorrect size should be handled as ValueError.
-    # Note that the previous add has determined the length the whole data.
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00', 6)
-    with self.assertRaises(ValueError):
+    with self.assertRaises(util.ChunkCollisionError):
       assembler.add(b'\x00\x00\x00', 6)
+    # Collision with too long chunks should be handled as ValueError.
+    # Note that the previous add has determined the length the whole data.
     with self.assertRaises(ValueError):
       assembler.add(b'\x00\x00\x00\x00', 6)
     assembler.add(b'\x00\x05', 6)  # same content

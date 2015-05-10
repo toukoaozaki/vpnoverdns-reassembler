@@ -26,6 +26,21 @@ class ChunkCollisionError(UnexpectedChunkError):
   pass
 
 
+class UnexpectedChunkLengthError(ChunkCollisionError):
+  """Raised when the length of the added chunk is too small or large.
+  
+  This exception is used when the length of the chunk is legal but not expected
+  according to the parameters of DataAssembler. For example, the last chunk must
+  be sized to fit the known data length, and every other chunk must be sized
+  exactly as the alignment value. When the length is illegal, e.g. longer than
+  the alignment value, ValueError should be raised instead.
+
+  As the length mismatch is an indication of potential chunk collisions, this
+  exception subclasses ChunkCollisionError.
+  """
+  pass
+
+
 class DataChunk(collections.namedtuple('DataChunk', ['data', 'offset'])):
   pass
 
@@ -142,11 +157,12 @@ class DataAssembler:
       if self._length is not None and offset + length != self._length:
         # This is the last chunk, which should fill the buffer without gap or
         # overflow.
-        raise ValueError('incorrect length {} for the last chunk'.format(length))
+        raise UnexpectedChunkLengthError(
+            'incorrect length {} for the last chunk'.format(length))
     elif length != self._alignment:
         # Not the last chunk; data length must match alignment.
-        raise ValueError('length of every chunk but the last '
-                         'must match alignment.')
+        raise UnexpectedChunkLengthError(
+            'length of every chunk but the last must match alignment.')
 
   def _is_last_chunk(self, chunk_index):
     return chunk_index >= len(self._has_chunk) - 1
