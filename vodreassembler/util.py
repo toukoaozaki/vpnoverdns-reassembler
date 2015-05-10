@@ -71,7 +71,7 @@ class DataAssembler:
     self._alignment = alignment
     bitarray_length = self._bitarray_length(length) if length is not None else 0
     self._has_chunk = bitarray.bitarray(bitarray_length)
-    self._storage = storage or io.BytesIO(b'\x00' * (length or 0))
+    self._storage = storage or io.BytesIO()
     self._length = length
 
     self._has_chunk.setall(False)
@@ -108,7 +108,12 @@ class DataAssembler:
     curr = self._storage.seek(0)
     if curr != 0:
       raise RuntimeError('seek(0) failed')
-    return self._storage.read()
+    result = self._storage.read()
+    if self._length is not None and len(result) < self._length:
+      assert not self.complete
+      # pad the results to fit the requested length.
+      result += b'\x00' * (self._length - len(result))
+    return result
 
   def add(self, data, offset):
     self._verify_chunk_params(data, offset)
