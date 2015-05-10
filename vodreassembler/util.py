@@ -183,7 +183,7 @@ class DataAssembler:
       self._length = offset + length
 
   def _extend_bitmap(self, length):
-    assert length > len(self._has_chunk)
+    assert length >= len(self._has_chunk)
     extension = length - len(self._has_chunk)
     self._has_chunk.extend(False for i in range(extension))
 
