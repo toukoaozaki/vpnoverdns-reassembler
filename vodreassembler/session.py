@@ -65,8 +65,9 @@ class _SessionData:
     elif msg.type is protocol.MessageType.request_data:
       self._update_request_data(msg.variables['bf'], msg.variables['wr'])
     elif msg.type is protocol.MessageType.check_request:
-      # We don't really care about check_request at this point.
-      pass
+      if len(msg.payload) == 4 and msg.payload.startswith(b'L'):
+        self._update_response_length(int.from_bytes(msg.payload[1:],
+                                                    byte_order='big'))
     elif msg.type is protocol.MessageType.fetch_response:
       self._update_response_data(msg.variables['ln'], msg.variables['rd'],
                                  msg.payload)
@@ -91,10 +92,11 @@ class _SessionData:
       self.request_data = util.DataAssembler(30, length=self.request_length)
     try:
       self.request_data.add(data, offset)
-      if self.request_data.length is not None:
-        self._update_request_length(self.request_data.length)
-    except util.ChunkCollisionError:
+    except util.UnexpectedChunkError:
       self.collision = True
+      return
+    if self.request_data.length is not None:
+      self._update_request_length(self.request_data.length)
 
   def _update_response_length(self, length):
     if self.response_length is not None and self.response_length != length:
@@ -113,12 +115,17 @@ class _SessionData:
     absolute_offset = segment_offset + chunk.offset
     try:
       self.response_data.add(chunk.data, absolute_offset)
-      if segment_length < 48:
-        self.response_data.length = segment_offset + segment_length
-      if self.response_data.length is not None:
-        self._update_response_length(self.response_data.length)
-    except util.ChunkCollisionError:
+    except util.UnexpectedChunkError:
       self.collision = True
+      return
+
+    if segment_length < 48:
+      try:
+        self.response_data.length = segment_offset + segment_length
+      except ValueError:
+        self.collision = True
+    if self.response_data.length is not None:
+      self._update_response_length(self.response_data.length)
 
 
 class SessionDatabase:
@@ -135,6 +142,10 @@ class SessionDatabase:
 
   def __len__(self):
     return len(self._sessions)
+
+  def __iter__(self):
+    # Use values, as keys are redundant.
+    return iter(self._sessions.values())
 
   def build_from_records(self, records):
     parser = protocol.MessageParser(self._fqdn_suffix)
