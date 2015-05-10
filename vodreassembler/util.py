@@ -68,13 +68,17 @@ class DataAssembler:
         raise ValueError("{}: length "
                          "cannot be negative".format(self.__init__.__name__))
 
-    bitarray_length = 1 + (length - 1) // alignment if length is not None else 1
     self._alignment = alignment
+    bitarray_length = self._bitarray_length(length) if length is not None else 0
     self._has_chunk = bitarray.bitarray(bitarray_length)
     self._storage = storage or io.BytesIO(b'\x00' * (length or 0))
     self._length = length
 
     self._has_chunk.setall(False)
+
+  def _bitarray_length(self, data_length):
+    assert data_length is not None
+    return 1 + (data_length - 1) // self._alignment
 
   @property
   def alignment(self):
@@ -87,6 +91,15 @@ class DataAssembler:
   @property
   def length(self):
     return self._length
+
+  @length.setter
+  def length(self, value):
+    if self._length is None:
+      if value is not None:
+        self._length = value
+        self._extend_bitmap(self._bitarray_length(value))
+    elif value != self._length:
+      raise ValueError('length cannot be changed once set')
 
   def getbytes(self, incomplete=False):
     if not incomplete and not self.complete:
@@ -141,13 +154,17 @@ class DataAssembler:
     if chunk_index >= len(self._has_chunk):
       assert self._length is None
       # Extend the bitarray to ensure chunk_index is a valid index.
-      extension = chunk_index - len(self._has_chunk) + 1
-      self._has_chunk.extend(False for i in range(extension))
+      self._extend_bitmap(chunk_index + 1)
 
     self._has_chunk[chunk_index] = True
     if self._length is None and length < self._alignment:
       # This must be the last chunk; now we know the length.
       self._length = offset + length
+
+  def _extend_bitmap(self, length):
+    assert length > len(self._has_chunk)
+    extension = length - len(self._has_chunk)
+    self._has_chunk.extend(False for i in range(extension))
 
   def _data_already_added(self, data, offset):
     # If we have seen the chunk before, check whether content matches.

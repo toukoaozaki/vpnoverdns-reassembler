@@ -33,6 +33,19 @@ class Session:
       return
     return self._sess_data.request_data.getbytes()
 
+  @property
+  def response_length(self):
+    if (self._sess_data.response_length is None
+        and self._sess_data.response_data is not None):
+      return self._sess_data.response_data.length
+    return self._sess_data.response_length
+
+  @property
+  def response_data(self):
+    if self._sess_data.response_data is None:
+      return
+    return self._sess_data.response_data.getbytes()
+
 
 class _SessionData:
   def __init__(self, sess_id):
@@ -43,7 +56,6 @@ class _SessionData:
     self.request_data = None
     self.response_length = None
     self.response_data = None
-    self.response_data_segments = {}
 
   def update(self, msg):
     assert msg.error is None
@@ -56,8 +68,8 @@ class _SessionData:
       # We don't really care about check_request at this point.
       pass
     elif msg.type is protocol.MessageType.fetch_response:
-      # TODO(toukoaozaki) implement this
-      pass
+      self._update_response_data(msg.variables['ln'], msg.variables['rd'],
+                                 msg.payload)
     elif msg.type is protocol.MessageType.close_ticket:
       # We don't really care about close_ticket at this point.
       pass
@@ -81,6 +93,30 @@ class _SessionData:
       self.request_data.add(data, offset)
       if self.request_data.length is not None:
         self._update_request_length(self.request_data.length)
+    except util.ChunkCollisionError:
+      self.collision = True
+
+  def _update_response_length(self, length):
+    if self.response_length is not None and self.response_length != length:
+      self.collision = True
+      return
+    self.response_length = length
+
+  def _update_response_data(self, segment_length, segment_offset, chunk):
+    if self.response_data is None:
+      self.response_data = util.DataAssembler(3, length=self.response_length)
+    # Response data is queried by split segments. chunk is a piece of data
+    # within one of the segments. In order to reassemble the entire data, we
+    # must first construct each segment from chunks, then assemble segments into
+    # final data. Fortunately, the known implementation uses segment_length=48,
+    # which is a multiple of 3; therefore a single DataAssembler can be used.
+    absolute_offset = segment_offset + chunk.offset
+    try:
+      self.response_data.add(chunk.data, absolute_offset)
+      if segment_length < 48:
+        self.response_data.length = segment_offset + segment_length
+      if self.response_data.length is not None:
+        self._update_response_length(self.response_data.length)
     except util.ChunkCollisionError:
       self.collision = True
 

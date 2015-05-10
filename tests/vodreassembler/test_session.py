@@ -1,4 +1,5 @@
 import binascii
+import os
 import unittest
 from vodreassembler import dnsrecord
 from vodreassembler import protocol
@@ -20,10 +21,8 @@ class TestSessionDatabase(unittest.TestCase):
       dnsrecord.DnsRecord('bf-e0.wr-00000060.id-11695062.v0.tun.vpnoverdns.com.',
           'IN', 'A', '')
   ]
-  REQUEST_DATA = (
-      b'\xf2\x90tA+H[F\xb9\xf89\xf8\x7f\x814t\xb2\xfe\xf8\xe3\x97\xecc\xbf*'
-      b'\xba\x10;\xedq\x03\x96\xceMT\xfd<\xa5\xc6)\xed\xc7x_\xded\xd0\x85'
-      b'\xa7\x06\xcf\x84\xec\tU\x1a\x13\x078\xb7\xe0')
+  REQUEST_DATA = os.urandom(61)
+  RESPONSE_DATA = os.urandom(100)
 
   def setUp(self):
     self._db = session.SessionDatabase()
@@ -64,6 +63,27 @@ class TestSessionDatabase(unittest.TestCase):
     self.assertEquals(len(self.REQUEST_DATA), self._db[12345678].request_length)
     self.assertEquals(self.REQUEST_DATA, self._db[12345678].request_data)
 
+  def test_build_from_records_response_data(self):
+    response_segments = [self.RESPONSE_DATA[i:i+48]
+                         for i in range(0, len(self.RESPONSE_DATA), 48)]
+    records = []
+    for i, segment in enumerate(response_segments):
+      msg_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
+      for off in range(0, len(segment), 3):
+        msg = protocol.Message.create('0', msg_vars,
+                                      util.DataChunk(segment[off:off+3], off))
+        records.append(msg.encode())
+
+    self._db.build_from_records(records)
+    self.assertIn(12345678, self._db)
+    self.assertEquals(12345678, self._db[12345678].sess_id)
+    self.assertFalse(self._db[12345678].collision)
+    self.assertIsNone(self._db[12345678].random_number)
+    self.assertIsNone(self._db[12345678].request_data)
+    self.assertIsNone(self._db[12345678].request_length)
+    self.assertEquals(len(self.RESPONSE_DATA),
+                      self._db[12345678].response_length)
+    self.assertEquals(self.RESPONSE_DATA, self._db[12345678].response_data)
 
 if __name__ == '__main__':
   unittest.main()
