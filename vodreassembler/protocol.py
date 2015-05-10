@@ -120,7 +120,7 @@ class Message(collections.namedtuple('Message', ['version', 'type',
     if self.type is MessageType.fetch_response:
       return None
     if len(self.payload.data) == 2 and self.payload.data.startswith(b'E'):
-      return self.payload.data[1]
+      return self.payload.data[1] or None
     return None
 
   def encode(self, fqdn_suffix=None):
