@@ -1,5 +1,6 @@
 import binascii
 import os
+import random
 import unittest
 from vodreassembler import dnsrecord
 from vodreassembler import protocol
@@ -26,6 +27,8 @@ class TestSessionDatabase(unittest.TestCase):
 
   def setUp(self):
     self._db = session.SessionDatabase()
+    # use fixed seed for deterministic results
+    self._random = random.Random(100)
 
   def test_build_from_records_open_ticket(self):
     self._db.build_from_records([self.OPEN_TICKET_RECORD])
@@ -41,6 +44,7 @@ class TestSessionDatabase(unittest.TestCase):
                                    self.OPEN_TICKET_RECORD.cls,
                                    self.OPEN_TICKET_RECORD.type,
                                    '128.69.10.255')]  # b'E\x10'
+    self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertNotIn(0xb273d6, self._db)
     self.assertEquals(0, len(self._db))
@@ -55,6 +59,7 @@ class TestSessionDatabase(unittest.TestCase):
             payload)
         for i in range(0, len(self.REQUEST_DATA), 30)]
     records = [m.encode() for m in messages]
+    self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
     self.assertEquals(12345678, self._db[12345678].sess_id)
@@ -74,6 +79,7 @@ class TestSessionDatabase(unittest.TestCase):
                                       util.DataChunk(segment[off:off+3], off))
         records.append(msg.encode())
 
+    self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
     self.assertEquals(12345678, self._db[12345678].sess_id)
