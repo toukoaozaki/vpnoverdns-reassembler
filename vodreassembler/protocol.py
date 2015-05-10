@@ -6,6 +6,7 @@ import enum
 import regex
 import struct
 from vodreassembler import util
+from vodreassembler import dnsrecord
 
 DEFAULT_FQDN_SUFFIX = 'tun.vpnoverdns.com.'
 
@@ -36,6 +37,25 @@ def ipv4_to_chunk(addr):
   offset = (octets[0] & 0x3f) * 3
   data = b''.join(map(lambda x: struct.pack('!B', x), octets[1:length+1]))
   return util.DataChunk(data, offset)
+
+def chunk_to_ipv4(chunk):
+  if not isinstance(chunk, util.DataChunk):
+    chunk = util.DataChunk(*chunk)
+  length = len(chunk.data)
+  if length <= 0:
+    raise ValueError('length must be at least 1')
+  elif length > 3:
+    raise ValueError('cannot encode chunks longer than 3 bytes')
+  elif chunk.offset % 3 != 0:
+    raise ValueError('chunk offset must be multiples of 3')
+  elif chunk.offset < 0:
+    raise ValueError('chunk offset cannot be negative')
+  elif chunk.offset // 3 >= 0x3f:
+    raise ValueError('chunk offset cannot exceed {}'.format(0x3f))
+  return '{}.{}.{}.{}'.format((length << 6) + (chunk.offset // 3),
+                              chunk.data[0],
+                              chunk.data[1] if length >= 2 else 255,
+                              chunk.data[2] if length == 3 else 255)
 
 def normalize_fqdn_suffix(fqdn_suffix):
   if not fqdn_suffix.endswith('.'):
@@ -85,12 +105,15 @@ class Message(collections.namedtuple('Message', ['version', 'type',
 
   @staticmethod
   def normalize_data(msgtype, variables, payload):
+    newvars = {}
     for key in variables:
       if key in {'id', 'sz', 'rn', 'wr', 'ck', 'ln', 'rd', 'retry'}:
-        variables[key] = int(variables[key])
+        newvars[key] = int(variables[key])
       elif key in {'bf'}:
-        variables[key] = binascii.unhexlify(variables[key])
-    return variables, payload
+        newvars[key] = binascii.unhexlify(variables[key])
+      else:
+        newvars[key] = variables[key]
+    return newvars, payload
 
   @property
   def error(self):
@@ -99,6 +122,33 @@ class Message(collections.namedtuple('Message', ['version', 'type',
     if len(self.payload.data) == 2 and self.payload.data.startswith(b'E'):
       return self.payload.data[1]
     return None
+
+  def encode(self, fqdn_suffix=None):
+    fqdn_suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
+    field_encoders = [
+        ('retry', str),
+        ('sz', '{:08d}'.format),
+        ('rn', '{:08d}'.format),
+        ('bf', lambda x: binascii.hexlify(x).decode('ascii')),
+        ('wr', '{:08d}'.format),
+        ('ck', '{:08d}'.format),
+        ('ln', '{:08d}'.format),
+        ('rd', '{:08d}'.format),
+        ('ac', None),
+        ('id', '{:08d}'.format),
+    ]
+
+    def encode_var(field, encoder):
+      if encoder:
+        return field + '-' + encoder(self.variables[field])
+      return field
+
+    variables = '.'.join(encode_var(field, encoder)
+                         for field, encoder in field_encoders
+                         if field in self.variables)
+    return dnsrecord.DnsRecord(
+        variables + '.v' + str(self.version) + '.' + fqdn_suffix,
+        'IN', 'A', chunk_to_ipv4(self.payload))
 
 
 class MessageParser:
@@ -122,4 +172,3 @@ class MessageParser:
     variables.update(zip(m.captures('var'), m.captures('value')))
     return Message.create(m.group('version'), variables,
                           ipv4_to_chunk(dns_record.value))
-

@@ -58,6 +58,24 @@ class TestProtocol(unittest.TestCase):
     with self.assertRaises(ValueError):
       protocol.ipv4_to_chunk('1.128.64.1999')
 
+  def test_chunk_to_ipv4(self):
+    self.assertEquals('192.168.0.0',
+                      protocol.chunk_to_ipv4((b'\xa8\x00\x00', 0)))
+    self.assertEquals('129.63.3.255',
+                      protocol.chunk_to_ipv4((b'\x3f\x03', 3)))
+    self.assertEquals('66.91.255.255',
+                      protocol.chunk_to_ipv4((b'\x5b', 6)))
+    with self.assertRaises(ValueError):
+      protocol.chunk_to_ipv4((b'', 0))
+    with self.assertRaises(ValueError):
+      protocol.chunk_to_ipv4((b'\x5b', -3))
+    with self.assertRaises(ValueError):
+      protocol.chunk_to_ipv4((b'\x5b', -1))
+    with self.assertRaises(ValueError):
+      protocol.chunk_to_ipv4((b'\x5b', 1))
+    with self.assertRaises(ValueError):
+      protocol.chunk_to_ipv4((b'\x5b\x5c\x5d\x5e', 0))
+
 
 class TestMessageParser(unittest.TestCase):
   DEFAULT_RECORD = dnsrecord.DnsRecord(
@@ -109,7 +127,7 @@ class TestMessageParser(unittest.TestCase):
     self.assertEquals(self.DATA, msg.payload)
 
 
-class TestMessageType(unittest.TestCase):
+class TestMessage(unittest.TestCase):
   OPEN_TICKET_VARS = {'sz': '44', 'rn': '12345678', 'id': '00000001'}
   REQUEST_DATA_VARS = {'bf': 'abcdefabcdefabcdef', 'wr': '00000000',
                        'id': '98765432'}
@@ -210,6 +228,43 @@ class TestMessageType(unittest.TestCase):
     self.assertIsNone(msg.error) 
     msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, error_payload)
     self.assertEquals(10, msg.error)
+
+  def test_encode(self):
+    payload = util.DataChunk(b'\x00\x00\x00', 0)
+    msg = protocol.Message.create('0', self.OPEN_TICKET_VARS, payload)
+    record = msg.encode()
+    self.assertEquals(
+        'sz-00000044.rn-12345678.id-00000001.v0.tun.vpnoverdns.com.',
+        record.fqdn)
+    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+
+    msg = protocol.Message.create('0', self.REQUEST_DATA_VARS, payload)
+    record = msg.encode()
+    self.assertEquals(
+        'bf-abcdefabcdefabcdef.wr-00000000.id-98765432.v0.tun.vpnoverdns.com.',
+        record.fqdn)
+    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+
+    msg = protocol.Message.create('0', self.CHECK_REQUEST_VARS, payload)
+    record = msg.encode()
+    self.assertEquals(
+        'ck-00000020.id-98765432.v0.tun.vpnoverdns.com.',
+        record.fqdn)
+    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+
+    msg = protocol.Message.create('0', self.FETCH_RESPONSE_VARS, payload)
+    record = msg.encode()
+    self.assertEquals(
+        'ln-00000048.rd-00000000.id-98765432.v0.tun.vpnoverdns.com.',
+        record.fqdn)
+    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+
+    msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, payload)
+    record = msg.encode()
+    self.assertEquals(
+        'ac.id-98765432.v0.tun.vpnoverdns.com.',
+        record.fqdn)
+    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
 
 
 if __name__ == '__main__':
