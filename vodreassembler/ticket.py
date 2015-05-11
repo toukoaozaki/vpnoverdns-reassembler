@@ -1,55 +1,55 @@
-"""Module for session-related utilities."""
+"""Module for ticket-related utilities."""
 
 from vodreassembler import util
 from vodreassembler import protocol
 
 
-class Session:
-  def __init__(self, sess_data):
-    self._sess_data = sess_data
+class Ticket:
+  def __init__(self, ticket_data):
+    self._ticket_data = ticket_data
 
   @property
-  def sess_id(self):
-    return self._sess_data.id
+  def ticket_id(self):
+    return self._ticket_data.id
 
   @property
   def collision(self):
-    return self._sess_data.collision
+    return self._ticket_data.collision
 
   @property
   def random_number(self):
-    return self._sess_data.rn
+    return self._ticket_data.rn
 
   @property
   def request_length(self):
-    if (self._sess_data.request_length is None
-        and self._sess_data.request_data is not None):
-      return self._sess_data.request_data.length
-    return self._sess_data.request_length
+    if (self._ticket_data.request_length is None
+        and self._ticket_data.request_data is not None):
+      return self._ticket_data.request_data.length
+    return self._ticket_data.request_length
 
   @property
   def request_data(self):
-    if self._sess_data.request_data is None:
+    if self._ticket_data.request_data is None:
       return
-    return self._sess_data.request_data.getbytes()
+    return self._ticket_data.request_data.getbytes()
 
   @property
   def response_length(self):
-    if (self._sess_data.response_length is None
-        and self._sess_data.response_data is not None):
-      return self._sess_data.response_data.length
-    return self._sess_data.response_length
+    if (self._ticket_data.response_length is None
+        and self._ticket_data.response_data is not None):
+      return self._ticket_data.response_data.length
+    return self._ticket_data.response_length
 
   @property
   def response_data(self):
-    if self._sess_data.response_data is None:
+    if self._ticket_data.response_data is None:
       return
-    return self._sess_data.response_data.getbytes()
+    return self._ticket_data.response_data.getbytes()
 
 
-class _SessionData:
-  def __init__(self, sess_id):
-    self.id = sess_id
+class _TicketData:
+  def __init__(self, ticket_id):
+    self.id = ticket_id
     self.collision = False
     self.rn = None
     self.request_length = None
@@ -128,24 +128,24 @@ class _SessionData:
       self._update_response_length(self.response_data.length)
 
 
-class SessionDatabase:
+class TicketDatabase:
   def __init__(self, fqdn_suffix=None):
-    self._sessions = {}
-    self._session_data = {}
+    self._tickets = {}
+    self._ticket_data = {}
     self._fqdn_suffix = fqdn_suffix
 
-  def __getitem__(self, sess_id):
-    return self._sessions[sess_id]
+  def __getitem__(self, ticket_id):
+    return self._tickets[ticket_id]
 
-  def __contains__(self, sess_id):
-    return sess_id in self._sessions
+  def __contains__(self, ticket_id):
+    return ticket_id in self._tickets
 
   def __len__(self):
-    return len(self._sessions)
+    return len(self._tickets)
 
   def __iter__(self):
     # Use values, as keys are redundant.
-    return iter(self._sessions.values())
+    return iter(self._tickets.values())
 
   def build_from_records(self, records):
     parser = protocol.MessageParser(self._fqdn_suffix)
@@ -161,19 +161,19 @@ class SessionDatabase:
         continue
 
       if 'rn' in msg.variables:
-        sess_id = int.from_bytes(msg.payload.data, byteorder='big')
+        ticket_id = int.from_bytes(msg.payload.data, byteorder='big')
       elif 'id' in msg.variables:
-        sess_id = msg.variables['id']
+        ticket_id = msg.variables['id']
       else:
-        # Cannot map the record with any sessions; ignore
+        # Cannot map the record with any tickets; ignore
         continue
 
-      session_data = self._get_or_create_session_data(sess_id)
-      session_data.update(msg)
+      ticket_data = self._get_or_create_ticket_data(ticket_id)
+      ticket_data.update(msg)
 
-  def _get_or_create_session_data(self, sess_id):
-    if sess_id not in self._sessions:
-      data = _SessionData(sess_id)
-      self._sessions[sess_id] = Session(data)
-      self._session_data[sess_id] = data
-    return self._session_data[sess_id]
+  def _get_or_create_ticket_data(self, ticket_id):
+    if ticket_id not in self._tickets:
+      data = _TicketData(ticket_id)
+      self._tickets[ticket_id] = Ticket(data)
+      self._ticket_data[ticket_id] = data
+    return self._ticket_data[ticket_id]

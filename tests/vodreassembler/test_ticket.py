@@ -4,11 +4,11 @@ import random
 import unittest
 from vodreassembler import dnsrecord
 from vodreassembler import protocol
-from vodreassembler import session
+from vodreassembler import ticket
 from vodreassembler import util
 
 
-class TestSessionDatabase(unittest.TestCase):
+class TestTicketDatabase(unittest.TestCase):
   OPEN_TICKET_RECORD = dnsrecord.DnsRecord(
       'sz-00000061.rn-12345678.id-00000001.v0.tun.vpnoverdns.com.',
       'IN', 'A', '192.178.115.214')
@@ -26,14 +26,14 @@ class TestSessionDatabase(unittest.TestCase):
   RESPONSE_DATA = os.urandom(100)
 
   def setUp(self):
-    self._db = session.SessionDatabase()
+    self._db = ticket.TicketDatabase()
     # use fixed seed for deterministic results
     self._random = random.Random(100)
 
   def test_build_from_records_open_ticket(self):
     self._db.build_from_records([self.OPEN_TICKET_RECORD])
     self.assertIn(0xb273d6, self._db)
-    self.assertEquals(0xb273d6, self._db[0xb273d6].sess_id)
+    self.assertEquals(0xb273d6, self._db[0xb273d6].ticket_id)
     self.assertFalse(self._db[0xb273d6].collision)
     self.assertEquals(12345678, self._db[0xb273d6].random_number)
     self.assertEquals(61, self._db[0xb273d6].request_length)
@@ -62,7 +62,7 @@ class TestSessionDatabase(unittest.TestCase):
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
-    self.assertEquals(12345678, self._db[12345678].sess_id)
+    self.assertEquals(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
     self.assertEquals(len(self.REQUEST_DATA), self._db[12345678].request_length)
@@ -82,7 +82,7 @@ class TestSessionDatabase(unittest.TestCase):
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
-    self.assertEquals(12345678, self._db[12345678].sess_id)
+    self.assertEquals(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
     self.assertIsNone(self._db[12345678].request_data)
