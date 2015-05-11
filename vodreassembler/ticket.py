@@ -57,21 +57,21 @@ class _TicketData:
     self.response_length = None
     self.response_data = None
 
-  def update(self, msg):
-    assert msg.error is None
-    if msg.type is protocol.MessageType.open_ticket:
-      self._update_rn(msg.variables['rn'])
-      self._update_request_length(msg.variables['sz'])
-    elif msg.type is protocol.MessageType.request_data:
-      self._update_request_data(msg.variables['bf'], msg.variables['wr'])
-    elif msg.type is protocol.MessageType.check_request:
-      if len(msg.payload) == 4 and msg.payload.startswith(b'L'):
-        self._update_response_length(int.from_bytes(msg.payload[1:],
+  def update(self, query):
+    assert query.error is None
+    if query.type is protocol.QueryType.open_ticket:
+      self._update_rn(query.variables['rn'])
+      self._update_request_length(query.variables['sz'])
+    elif query.type is protocol.QueryType.request_data:
+      self._update_request_data(query.variables['bf'], query.variables['wr'])
+    elif query.type is protocol.QueryType.check_request:
+      if len(query.payload) == 4 and query.payload.startswith(b'L'):
+        self._update_response_length(int.from_bytes(query.payload[1:],
                                                     byte_order='big'))
-    elif msg.type is protocol.MessageType.fetch_response:
-      self._update_response_data(msg.variables['ln'], msg.variables['rd'],
-                                 msg.payload)
-    elif msg.type is protocol.MessageType.close_ticket:
+    elif query.type is protocol.QueryType.fetch_response:
+      self._update_response_data(query.variables['ln'], query.variables['rd'],
+                                 query.payload)
+    elif query.type is protocol.QueryType.close_ticket:
       # We don't really care about close_ticket at this point.
       pass
 
@@ -148,28 +148,28 @@ class TicketDatabase:
     return iter(self._tickets.values())
 
   def build_from_records(self, records):
-    parser = protocol.MessageParser(self._fqdn_suffix)
+    parser = protocol.QueryParser(self._fqdn_suffix)
     for r in records:
       try:
-        msg = parser.parse(r)
+        query = parser.parse(r)
       except ValueError:
         # Just ignore unparseable record.
         continue
 
-      if msg.error:
+      if query.error:
         # ignore error
         continue
 
-      if 'rn' in msg.variables:
-        ticket_id = int.from_bytes(msg.payload.data, byteorder='big')
-      elif 'id' in msg.variables:
-        ticket_id = msg.variables['id']
+      if 'rn' in query.variables:
+        ticket_id = int.from_bytes(query.payload.data, byteorder='big')
+      elif 'id' in query.variables:
+        ticket_id = query.variables['id']
       else:
         # Cannot map the record with any tickets; ignore
         continue
 
       ticket_data = self._get_or_create_ticket_data(ticket_id)
-      ticket_data.update(msg)
+      ticket_data.update(query)
 
   def _get_or_create_ticket_data(self, ticket_id):
     if ticket_id not in self._tickets:

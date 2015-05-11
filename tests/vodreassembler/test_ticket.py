@@ -51,14 +51,14 @@ class TestTicketDatabase(unittest.TestCase):
 
   def test_build_from_records_request_data(self):
     payload = util.DataChunk(b'E\x00', 0)  # E0 means no error (success)
-    messages = [
-        protocol.Message.create(
+    queries = [
+        protocol.Query.create(
             '0',
             {'bf': binascii.hexlify(self.REQUEST_DATA[i:i+30]).decode('ascii'),
              'wr': i,'id': 12345678},
             payload)
         for i in range(0, len(self.REQUEST_DATA), 30)]
-    records = [m.encode() for m in messages]
+    records = [q.encode() for q in queries]
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
@@ -73,11 +73,11 @@ class TestTicketDatabase(unittest.TestCase):
                          for i in range(0, len(self.RESPONSE_DATA), 48)]
     records = []
     for i, segment in enumerate(response_segments):
-      msg_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
+      query_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
       for off in range(0, len(segment), 3):
-        msg = protocol.Message.create('0', msg_vars,
+        query = protocol.Query.create('0', query_vars,
                                       util.DataChunk(segment[off:off+3], off))
-        records.append(msg.encode())
+        records.append(query.encode())
 
     self._random.shuffle(records)
     self._db.build_from_records(records)

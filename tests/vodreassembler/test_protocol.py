@@ -77,7 +77,7 @@ class TestProtocol(unittest.TestCase):
       protocol.chunk_to_ipv4((b'\x5b\x5c\x5d\x5e', 0))
 
 
-class TestMessageParser(unittest.TestCase):
+class TestQueryParser(unittest.TestCase):
   DEFAULT_RECORD = dnsrecord.DnsRecord(
       'foo-12345678.bar-00000000.v0.tun.vpnoverdns.com.',
       'IN', 'A', '192.178.115.214')
@@ -88,46 +88,46 @@ class TestMessageParser(unittest.TestCase):
   DATA = util.DataChunk(b'\xb2\x73\xd6', 0)
 
   def test_default_suffix(self):
-    parser = protocol.MessageParser()
-    msg = parser.parse(self.DEFAULT_RECORD)
-    self.assertEquals('0', msg.version)
-    self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.payload)
+    parser = protocol.QueryParser()
+    query = parser.parse(self.DEFAULT_RECORD)
+    self.assertEquals('0', query.version)
+    self.assertEquals(self.VARIABLES, query.variables)
+    self.assertEquals(self.DATA, query.payload)
 
   def test_custom_suffix_nodot(self):
-    parser = protocol.MessageParser(fqdn_suffix='illinois.edu')
-    msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', msg.version)
-    self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.payload)
+    parser = protocol.QueryParser(fqdn_suffix='illinois.edu')
+    query = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('0', query.version)
+    self.assertEquals(self.VARIABLES, query.variables)
+    self.assertEquals(self.DATA, query.payload)
 
   def test_custom_suffix_begindot(self):
-    parser = protocol.MessageParser(fqdn_suffix='.illinois.edu')
-    msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', msg.version)
-    self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.payload)
+    parser = protocol.QueryParser(fqdn_suffix='.illinois.edu')
+    query = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('0', query.version)
+    self.assertEquals(self.VARIABLES, query.variables)
+    self.assertEquals(self.DATA, query.payload)
 
   def test_custom_suffix_enddot(self):
-    parser = protocol.MessageParser(fqdn_suffix='illinois.edu.')
-    msg = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', msg.version)
-    self.assertEquals(self.VARIABLES, msg.variables)
-    self.assertEquals(self.DATA, msg.payload)
+    parser = protocol.QueryParser(fqdn_suffix='illinois.edu.')
+    query = parser.parse(self.CUSTOM_RECORD)
+    self.assertEquals('0', query.version)
+    self.assertEquals(self.VARIABLES, query.variables)
+    self.assertEquals(self.DATA, query.payload)
 
   def test_flags(self):
-    parser = protocol.MessageParser()
+    parser = protocol.QueryParser()
     record = dnsrecord.DnsRecord('ac.' + self.DEFAULT_RECORD.fqdn,
                                  *self.DEFAULT_RECORD[1:])
     expected_vars = self.VARIABLES
     expected_vars['ac'] = True
-    msg = parser.parse(record)
-    self.assertEquals('0', msg.version)
-    self.assertEquals(expected_vars, msg.variables)
-    self.assertEquals(self.DATA, msg.payload)
+    query = parser.parse(record)
+    self.assertEquals('0', query.version)
+    self.assertEquals(expected_vars, query.variables)
+    self.assertEquals(self.DATA, query.payload)
 
 
-class TestMessage(unittest.TestCase):
+class TestQuery(unittest.TestCase):
   OPEN_TICKET_VARS = {'sz': '44', 'rn': '12345678', 'id': '00000001'}
   REQUEST_DATA_VARS = {'bf': 'abcdefabcdefabcdef', 'wr': '00000000',
                        'id': '98765432'}
@@ -147,69 +147,69 @@ class TestMessage(unittest.TestCase):
   def test_type_deduction_unknown_version(self):
     with self.assertRaises(protocol.UnknownVersionError):
       # Version 1 is not known to the implementation
-      protocol.MessageType.deduce('1', self.OPEN_TICKET_VARS,
+      protocol.QueryType.deduce('1', self.OPEN_TICKET_VARS,
                                   util.DataChunk(b'\x00', 0))
 
   def test_type_deduction(self):
-    msgtype = protocol.MessageType.deduce('0', self.OPEN_TICKET_VARS,
+    querytype = protocol.QueryType.deduce('0', self.OPEN_TICKET_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.open_ticket, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.REQUEST_DATA_VARS,
+    self.assertEquals(protocol.QueryType.open_ticket, querytype)
+    querytype = protocol.QueryType.deduce('0', self.REQUEST_DATA_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.request_data, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.CHECK_REQUEST_VARS,
+    self.assertEquals(protocol.QueryType.request_data, querytype)
+    querytype = protocol.QueryType.deduce('0', self.CHECK_REQUEST_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.check_request, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.FETCH_RESPONSE_VARS,
+    self.assertEquals(protocol.QueryType.check_request, querytype)
+    querytype = protocol.QueryType.deduce('0', self.FETCH_RESPONSE_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.fetch_response, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.CLOSE_TICKET_VARS,
+    self.assertEquals(protocol.QueryType.fetch_response, querytype)
+    querytype = protocol.QueryType.deduce('0', self.CLOSE_TICKET_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.close_ticket, msgtype)
+    self.assertEquals(protocol.QueryType.close_ticket, querytype)
 
   def test_type_deduction_retries(self):
-    msgtype = protocol.MessageType.deduce('0', self.OPEN_TICKET_VARS_RETRY,
+    querytype = protocol.QueryType.deduce('0', self.OPEN_TICKET_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.open_ticket, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.REQUEST_DATA_VARS_RETRY,
+    self.assertEquals(protocol.QueryType.open_ticket, querytype)
+    querytype = protocol.QueryType.deduce('0', self.REQUEST_DATA_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.request_data, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.CHECK_REQUEST_VARS_RETRY,
+    self.assertEquals(protocol.QueryType.request_data, querytype)
+    querytype = protocol.QueryType.deduce('0', self.CHECK_REQUEST_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.check_request, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.FETCH_RESPONSE_VARS_RETRY,
+    self.assertEquals(protocol.QueryType.check_request, querytype)
+    querytype = protocol.QueryType.deduce('0', self.FETCH_RESPONSE_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.fetch_response, msgtype)
-    msgtype = protocol.MessageType.deduce('0', self.CLOSE_TICKET_VARS_RETRY,
+    self.assertEquals(protocol.QueryType.fetch_response, querytype)
+    querytype = protocol.QueryType.deduce('0', self.CLOSE_TICKET_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.MessageType.close_ticket, msgtype)
+    self.assertEquals(protocol.QueryType.close_ticket, querytype)
 
   def test_normalize_data(self):
-    variables, _ = protocol.Message.normalize_data(
-        protocol.MessageType.open_ticket, self.OPEN_TICKET_VARS_RETRY,
+    variables, _ = protocol.Query.normalize_data(
+        protocol.QueryType.open_ticket, self.OPEN_TICKET_VARS_RETRY,
         util.DataChunk(b'\x00\x00\x00', 0))
     for var, data in variables.items():
       self.assertIsInstance(data, int)
-    variables, _ = protocol.Message.normalize_data(
-        protocol.MessageType.open_ticket, self.REQUEST_DATA_VARS_RETRY,
+    variables, _ = protocol.Query.normalize_data(
+        protocol.QueryType.open_ticket, self.REQUEST_DATA_VARS_RETRY,
         util.DataChunk(b'\x00\x00\x00', 0))
     for var, data in variables.items():
       if var == 'bf':
         self.assertEquals(b'\xab\xcd\xef\xab\xcd\xef\xab\xcd\xef', data)
       else:
         self.assertIsInstance(data, int)
-    variables, _ = protocol.Message.normalize_data(
-        protocol.MessageType.open_ticket, self.CHECK_REQUEST_VARS_RETRY,
+    variables, _ = protocol.Query.normalize_data(
+        protocol.QueryType.open_ticket, self.CHECK_REQUEST_VARS_RETRY,
         util.DataChunk(b'\x00\x00\x00', 0))
     for var, data in variables.items():
       self.assertIsInstance(data, int)
-    variables, _ = protocol.Message.normalize_data(
-        protocol.MessageType.open_ticket, self.FETCH_RESPONSE_VARS_RETRY,
+    variables, _ = protocol.Query.normalize_data(
+        protocol.QueryType.open_ticket, self.FETCH_RESPONSE_VARS_RETRY,
         util.DataChunk(b'\x00\x00\x00', 0))
     for var, data in variables.items():
       self.assertIsInstance(data, int)
-    variables, _ = protocol.Message.normalize_data(
-        protocol.MessageType.open_ticket, self.CLOSE_TICKET_VARS_RETRY,
+    variables, _ = protocol.Query.normalize_data(
+        protocol.QueryType.open_ticket, self.CLOSE_TICKET_VARS_RETRY,
         util.DataChunk(b'\x00\x00\x00', 0))
     self.assertIsInstance(variables['retry'], int)
     self.assertIsInstance(variables['ac'], bool)  # unchanged
@@ -217,49 +217,49 @@ class TestMessage(unittest.TestCase):
 
   def test_error(self):
     error_payload = util.DataChunk(b'E\x0a', 0)
-    msg = protocol.Message.create('0', self.OPEN_TICKET_VARS, error_payload)
-    self.assertEquals(10, msg.error)
-    msg = protocol.Message.create('0', self.REQUEST_DATA_VARS, error_payload)
-    self.assertEquals(10, msg.error)
-    msg = protocol.Message.create('0', self.CHECK_REQUEST_VARS, error_payload)
-    self.assertEquals(10, msg.error)
-    msg = protocol.Message.create('0', self.FETCH_RESPONSE_VARS, error_payload)
-    self.assertEquals(10, msg.error)
-    msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, error_payload)
-    self.assertEquals(10, msg.error)
+    query = protocol.Query.create('0', self.OPEN_TICKET_VARS, error_payload)
+    self.assertEquals(10, query.error)
+    query = protocol.Query.create('0', self.REQUEST_DATA_VARS, error_payload)
+    self.assertEquals(10, query.error)
+    query = protocol.Query.create('0', self.CHECK_REQUEST_VARS, error_payload)
+    self.assertEquals(10, query.error)
+    query = protocol.Query.create('0', self.FETCH_RESPONSE_VARS, error_payload)
+    self.assertEquals(10, query.error)
+    query = protocol.Query.create('0', self.CLOSE_TICKET_VARS, error_payload)
+    self.assertEquals(10, query.error)
 
   def test_encode(self):
     payload = util.DataChunk(b'\x00\x00\x00', 0)
-    msg = protocol.Message.create('0', self.OPEN_TICKET_VARS, payload)
-    record = msg.encode()
+    query = protocol.Query.create('0', self.OPEN_TICKET_VARS, payload)
+    record = query.encode()
     self.assertEquals(
         'sz-00000044.rn-12345678.id-00000001.v0.tun.vpnoverdns.com.',
         record.fqdn)
     self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
 
-    msg = protocol.Message.create('0', self.REQUEST_DATA_VARS, payload)
-    record = msg.encode()
+    query = protocol.Query.create('0', self.REQUEST_DATA_VARS, payload)
+    record = query.encode()
     self.assertEquals(
         'bf-abcdefabcdefabcdef.wr-00000000.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
     self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
 
-    msg = protocol.Message.create('0', self.CHECK_REQUEST_VARS, payload)
-    record = msg.encode()
+    query = protocol.Query.create('0', self.CHECK_REQUEST_VARS, payload)
+    record = query.encode()
     self.assertEquals(
         'ck-00000020.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
     self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
 
-    msg = protocol.Message.create('0', self.FETCH_RESPONSE_VARS, payload)
-    record = msg.encode()
+    query = protocol.Query.create('0', self.FETCH_RESPONSE_VARS, payload)
+    record = query.encode()
     self.assertEquals(
         'ln-00000048.rd-00000000.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
     self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
 
-    msg = protocol.Message.create('0', self.CLOSE_TICKET_VARS, payload)
-    record = msg.encode()
+    query = protocol.Query.create('0', self.CLOSE_TICKET_VARS, payload)
+    record = query.encode()
     self.assertEquals(
         'ac.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)

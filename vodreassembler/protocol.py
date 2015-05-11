@@ -67,7 +67,7 @@ def normalize_fqdn_suffix(fqdn_suffix):
 
 
 @enum.unique
-class MessageType(enum.Enum):
+class QueryType(enum.Enum):
   unknown = 0
   open_ticket = 1
   request_data = 2
@@ -84,28 +84,28 @@ class MessageType(enum.Enum):
       # ignore clearly optional variables
       keys.remove('retry')
     if keys == {'sz', 'rn', 'id'}:
-      return MessageType.open_ticket
+      return QueryType.open_ticket
     elif keys == {'bf', 'wr', 'id'}:
-      return MessageType.request_data
+      return QueryType.request_data
     elif keys == {'ck', 'id'}:
-      return MessageType.check_request
+      return QueryType.check_request
     elif keys == {'ln', 'rd', 'id'}:
-      return MessageType.fetch_response
+      return QueryType.fetch_response
     elif keys == {'ac', 'id'}:
-      return MessageType.close_ticket
-    return MessageType.unknown
+      return QueryType.close_ticket
+    return QueryType.unknown
 
 
-class Message(collections.namedtuple('Message', ['version', 'type',
+class Query(collections.namedtuple('Query', ['version', 'type',
                                                  'variables', 'payload'])):
   @classmethod
   def create(cls, version, variables, payload):
-    msgtype = MessageType.deduce(version, variables, payload)
-    variables, payload = cls.normalize_data(msgtype, variables, payload)
-    return cls(version, msgtype, variables, payload)
+    querytype = QueryType.deduce(version, variables, payload)
+    variables, payload = cls.normalize_data(querytype, variables, payload)
+    return cls(version, querytype, variables, payload)
 
   @staticmethod
-  def normalize_data(msgtype, variables, payload):
+  def normalize_data(querytype, variables, payload):
     newvars = {}
     for key in variables:
       if key in {'id', 'sz', 'rn', 'wr', 'ck', 'ln', 'rd', 'retry'}:
@@ -153,7 +153,7 @@ class Message(collections.namedtuple('Message', ['version', 'type',
         'IN', 'A', chunk_to_ipv4(self.payload))
 
 
-class MessageParser:
+class QueryParser:
   def __init__(self, fqdn_suffix=None):
     self._suffix = normalize_fqdn_suffix(fqdn_suffix or DEFAULT_FQDN_SUFFIX)
     self._re = regex.compile(
@@ -172,5 +172,5 @@ class MessageParser:
           "fqdn '{}' is not in the expected format".format(dns_record.fqdn))
     variables = dict.fromkeys(m.captures('flag'), True)
     variables.update(zip(m.captures('var'), m.captures('value')))
-    return Message.create(m.group('version'), variables,
+    return Query.create(m.group('version'), variables,
                           ipv4_to_chunk(dns_record.value))
