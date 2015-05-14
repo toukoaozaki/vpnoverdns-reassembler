@@ -33,11 +33,11 @@ class TestTicketDatabase(unittest.TestCase):
   def test_build_from_records_open_ticket(self):
     self._db.build_from_records([self.OPEN_TICKET_RECORD])
     self.assertIn(0xb273d6, self._db)
-    self.assertEquals(0xb273d6, self._db[0xb273d6].ticket_id)
+    self.assertEqual(0xb273d6, self._db[0xb273d6].ticket_id)
     self.assertFalse(self._db[0xb273d6].collision)
-    self.assertEquals(12345678, self._db[0xb273d6].random_number)
-    self.assertEquals(61, self._db[0xb273d6].request_length)
-    self.assertEquals(1, len(self._db))
+    self.assertEqual(12345678, self._db[0xb273d6].random_number)
+    self.assertEqual(61, self._db[0xb273d6].request_length)
+    self.assertEqual(1, len(self._db))
 
   def test_build_from_records_ignores_error(self):
     records = [dnsrecord.DnsRecord(self.OPEN_TICKET_RECORD.fqdn,
@@ -47,7 +47,7 @@ class TestTicketDatabase(unittest.TestCase):
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertNotIn(0xb273d6, self._db)
-    self.assertEquals(0, len(self._db))
+    self.assertEqual(0, len(self._db))
 
   def test_build_from_records_request_data(self):
     payload = util.DataChunk(b'E\x00', 0)  # E0 means no error (success)
@@ -62,11 +62,11 @@ class TestTicketDatabase(unittest.TestCase):
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
-    self.assertEquals(12345678, self._db[12345678].ticket_id)
+    self.assertEqual(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
-    self.assertEquals(len(self.REQUEST_DATA), self._db[12345678].request_length)
-    self.assertEquals(self.REQUEST_DATA, self._db[12345678].request_data)
+    self.assertEqual(len(self.REQUEST_DATA), self._db[12345678].request_length)
+    self.assertEqual(self.REQUEST_DATA, self._db[12345678].request_data)
 
   def test_build_from_records_response_data(self):
     response_segments = [self.RESPONSE_DATA[i:i+48]
@@ -82,14 +82,14 @@ class TestTicketDatabase(unittest.TestCase):
     self._random.shuffle(records)
     self._db.build_from_records(records)
     self.assertIn(12345678, self._db)
-    self.assertEquals(12345678, self._db[12345678].ticket_id)
+    self.assertEqual(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
     self.assertIsNone(self._db[12345678].request_data)
     self.assertIsNone(self._db[12345678].request_length)
-    self.assertEquals(len(self.RESPONSE_DATA),
-                      self._db[12345678].response_length)
-    self.assertEquals(self.RESPONSE_DATA, self._db[12345678].response_data)
+    self.assertEqual(len(self.RESPONSE_DATA),
+                     self._db[12345678].response_length)
+    self.assertEqual(self.RESPONSE_DATA, self._db[12345678].response_data)
 
 if __name__ == '__main__':
   unittest.main()

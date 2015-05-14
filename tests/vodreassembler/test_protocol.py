@@ -8,11 +8,11 @@ class TestProtocol(unittest.TestCase):
   def test_ipv4_to_bytes(self):
     # 192 == 11000000, length 3 offset 0
     # 168 == 0xa8
-    self.assertEquals(b'\xa8\x00\x00', protocol.ipv4_to_bytes('192.168.0.0'))
+    self.assertEqual(b'\xa8\x00\x00', protocol.ipv4_to_bytes('192.168.0.0'))
     # 129 == 10000001, length 2 offset 3, last octet ignored
-    self.assertEquals(b'\x3f\x03', protocol.ipv4_to_bytes('129.63.3.8'))
+    self.assertEqual(b'\x3f\x03', protocol.ipv4_to_bytes('129.63.3.8'))
     # 66 == 01000010, length 1 offset 6, last two octets ignored
-    self.assertEquals(b'\x5b', protocol.ipv4_to_bytes('66.91.9.70'))
+    self.assertEqual(b'\x5b', protocol.ipv4_to_bytes('66.91.9.70'))
     # Test with invalid input
     with self.assertRaises(AttributeError):
       protocol.ipv4_to_bytes(None)
@@ -34,12 +34,12 @@ class TestProtocol(unittest.TestCase):
   def test_ipv4_to_chunk(self):
     # 192 == 11000000, length 3 offset 0
     # 168 == 0xa8
-    self.assertEquals((b'\xa8\x00\x00', 0),
-                      protocol.ipv4_to_chunk('192.168.0.0'))
+    self.assertEqual((b'\xa8\x00\x00', 0),
+                     protocol.ipv4_to_chunk('192.168.0.0'))
     # 129 == 10000001, length 2 offset 3, last octet ignored
-    self.assertEquals((b'\x3f\x03', 3), protocol.ipv4_to_chunk('129.63.3.8'))
+    self.assertEqual((b'\x3f\x03', 3), protocol.ipv4_to_chunk('129.63.3.8'))
     # 66 == 01000010, length 1 offset 6, last two octets ignored
-    self.assertEquals((b'\x5b', 6), protocol.ipv4_to_chunk('66.91.9.70'))
+    self.assertEqual((b'\x5b', 6), protocol.ipv4_to_chunk('66.91.9.70'))
     # Test with invalid input
     with self.assertRaises(AttributeError):
       protocol.ipv4_to_chunk(None)
@@ -59,12 +59,12 @@ class TestProtocol(unittest.TestCase):
       protocol.ipv4_to_chunk('1.128.64.1999')
 
   def test_chunk_to_ipv4(self):
-    self.assertEquals('192.168.0.0',
-                      protocol.chunk_to_ipv4((b'\xa8\x00\x00', 0)))
-    self.assertEquals('129.63.3.255',
-                      protocol.chunk_to_ipv4((b'\x3f\x03', 3)))
-    self.assertEquals('66.91.255.255',
-                      protocol.chunk_to_ipv4((b'\x5b', 6)))
+    self.assertEqual('192.168.0.0',
+                     protocol.chunk_to_ipv4((b'\xa8\x00\x00', 0)))
+    self.assertEqual('129.63.3.255',
+                     protocol.chunk_to_ipv4((b'\x3f\x03', 3)))
+    self.assertEqual('66.91.255.255',
+                     protocol.chunk_to_ipv4((b'\x5b', 6)))
     with self.assertRaises(ValueError):
       protocol.chunk_to_ipv4((b'', 0))
     with self.assertRaises(ValueError):
@@ -90,30 +90,30 @@ class TestQueryParser(unittest.TestCase):
   def test_default_suffix(self):
     parser = protocol.QueryParser()
     query = parser.parse(self.DEFAULT_RECORD)
-    self.assertEquals('0', query.version)
-    self.assertEquals(self.VARIABLES, query.variables)
-    self.assertEquals(self.DATA, query.payload)
+    self.assertEqual('0', query.version)
+    self.assertEqual(self.VARIABLES, query.variables)
+    self.assertEqual(self.DATA, query.payload)
 
   def test_custom_suffix_nodot(self):
     parser = protocol.QueryParser(fqdn_suffix='illinois.edu')
     query = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', query.version)
-    self.assertEquals(self.VARIABLES, query.variables)
-    self.assertEquals(self.DATA, query.payload)
+    self.assertEqual('0', query.version)
+    self.assertEqual(self.VARIABLES, query.variables)
+    self.assertEqual(self.DATA, query.payload)
 
   def test_custom_suffix_begindot(self):
     parser = protocol.QueryParser(fqdn_suffix='.illinois.edu')
     query = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', query.version)
-    self.assertEquals(self.VARIABLES, query.variables)
-    self.assertEquals(self.DATA, query.payload)
+    self.assertEqual('0', query.version)
+    self.assertEqual(self.VARIABLES, query.variables)
+    self.assertEqual(self.DATA, query.payload)
 
   def test_custom_suffix_enddot(self):
     parser = protocol.QueryParser(fqdn_suffix='illinois.edu.')
     query = parser.parse(self.CUSTOM_RECORD)
-    self.assertEquals('0', query.version)
-    self.assertEquals(self.VARIABLES, query.variables)
-    self.assertEquals(self.DATA, query.payload)
+    self.assertEqual('0', query.version)
+    self.assertEqual(self.VARIABLES, query.variables)
+    self.assertEqual(self.DATA, query.payload)
 
   def test_flags(self):
     parser = protocol.QueryParser()
@@ -122,9 +122,9 @@ class TestQueryParser(unittest.TestCase):
     expected_vars = self.VARIABLES
     expected_vars['ac'] = True
     query = parser.parse(record)
-    self.assertEquals('0', query.version)
-    self.assertEquals(expected_vars, query.variables)
-    self.assertEquals(self.DATA, query.payload)
+    self.assertEqual('0', query.version)
+    self.assertEqual(expected_vars, query.variables)
+    self.assertEqual(self.DATA, query.payload)
 
 
 class TestQuery(unittest.TestCase):
@@ -153,36 +153,36 @@ class TestQuery(unittest.TestCase):
   def test_type_deduction(self):
     querytype = protocol.QueryType.deduce('0', self.OPEN_TICKET_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.open_ticket, querytype)
+    self.assertEqual(protocol.QueryType.open_ticket, querytype)
     querytype = protocol.QueryType.deduce('0', self.REQUEST_DATA_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.request_data, querytype)
+    self.assertEqual(protocol.QueryType.request_data, querytype)
     querytype = protocol.QueryType.deduce('0', self.CHECK_REQUEST_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.check_request, querytype)
+    self.assertEqual(protocol.QueryType.check_request, querytype)
     querytype = protocol.QueryType.deduce('0', self.FETCH_RESPONSE_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.fetch_response, querytype)
+    self.assertEqual(protocol.QueryType.fetch_response, querytype)
     querytype = protocol.QueryType.deduce('0', self.CLOSE_TICKET_VARS,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.close_ticket, querytype)
+    self.assertEqual(protocol.QueryType.close_ticket, querytype)
 
   def test_type_deduction_retries(self):
     querytype = protocol.QueryType.deduce('0', self.OPEN_TICKET_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.open_ticket, querytype)
+    self.assertEqual(protocol.QueryType.open_ticket, querytype)
     querytype = protocol.QueryType.deduce('0', self.REQUEST_DATA_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.request_data, querytype)
+    self.assertEqual(protocol.QueryType.request_data, querytype)
     querytype = protocol.QueryType.deduce('0', self.CHECK_REQUEST_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.check_request, querytype)
+    self.assertEqual(protocol.QueryType.check_request, querytype)
     querytype = protocol.QueryType.deduce('0', self.FETCH_RESPONSE_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.fetch_response, querytype)
+    self.assertEqual(protocol.QueryType.fetch_response, querytype)
     querytype = protocol.QueryType.deduce('0', self.CLOSE_TICKET_VARS_RETRY,
                                           util.DataChunk(b'\x00\x00\x00', 0))
-    self.assertEquals(protocol.QueryType.close_ticket, querytype)
+    self.assertEqual(protocol.QueryType.close_ticket, querytype)
 
   def test_normalize_data(self):
     variables, _ = protocol.Query.normalize_data(
@@ -195,7 +195,7 @@ class TestQuery(unittest.TestCase):
         util.DataChunk(b'\x00\x00\x00', 0))
     for var, data in variables.items():
       if var == 'bf':
-        self.assertEquals(b'\xab\xcd\xef\xab\xcd\xef\xab\xcd\xef', data)
+        self.assertEqual(b'\xab\xcd\xef\xab\xcd\xef\xab\xcd\xef', data)
       else:
         self.assertIsInstance(data, int)
     variables, _ = protocol.Query.normalize_data(
@@ -218,52 +218,52 @@ class TestQuery(unittest.TestCase):
   def test_error(self):
     error_payload = util.DataChunk(b'E\x0a', 0)
     query = protocol.Query.create('0', self.OPEN_TICKET_VARS, error_payload)
-    self.assertEquals(10, query.error)
+    self.assertEqual(10, query.error)
     query = protocol.Query.create('0', self.REQUEST_DATA_VARS, error_payload)
-    self.assertEquals(10, query.error)
+    self.assertEqual(10, query.error)
     query = protocol.Query.create('0', self.CHECK_REQUEST_VARS, error_payload)
-    self.assertEquals(10, query.error)
+    self.assertEqual(10, query.error)
     query = protocol.Query.create('0', self.FETCH_RESPONSE_VARS, error_payload)
-    self.assertEquals(10, query.error)
+    self.assertEqual(10, query.error)
     query = protocol.Query.create('0', self.CLOSE_TICKET_VARS, error_payload)
-    self.assertEquals(10, query.error)
+    self.assertEqual(10, query.error)
 
   def test_encode(self):
     payload = util.DataChunk(b'\x00\x00\x00', 0)
     query = protocol.Query.create('0', self.OPEN_TICKET_VARS, payload)
     record = query.encode()
-    self.assertEquals(
+    self.assertEqual(
         'sz-00000044.rn-12345678.id-00000001.v0.tun.vpnoverdns.com.',
         record.fqdn)
-    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+    self.assertEqual(protocol.chunk_to_ipv4(payload), record.value)
 
     query = protocol.Query.create('0', self.REQUEST_DATA_VARS, payload)
     record = query.encode()
-    self.assertEquals(
+    self.assertEqual(
         'bf-abcdefabcdefabcdef.wr-00000000.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
-    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+    self.assertEqual(protocol.chunk_to_ipv4(payload), record.value)
 
     query = protocol.Query.create('0', self.CHECK_REQUEST_VARS, payload)
     record = query.encode()
-    self.assertEquals(
+    self.assertEqual(
         'ck-00000020.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
-    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+    self.assertEqual(protocol.chunk_to_ipv4(payload), record.value)
 
     query = protocol.Query.create('0', self.FETCH_RESPONSE_VARS, payload)
     record = query.encode()
-    self.assertEquals(
+    self.assertEqual(
         'ln-00000048.rd-00000000.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
-    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+    self.assertEqual(protocol.chunk_to_ipv4(payload), record.value)
 
     query = protocol.Query.create('0', self.CLOSE_TICKET_VARS, payload)
     record = query.encode()
-    self.assertEquals(
+    self.assertEqual(
         'ac.id-98765432.v0.tun.vpnoverdns.com.',
         record.fqdn)
-    self.assertEquals(protocol.chunk_to_ipv4(payload), record.value)
+    self.assertEqual(protocol.chunk_to_ipv4(payload), record.value)
 
 
 if __name__ == '__main__':

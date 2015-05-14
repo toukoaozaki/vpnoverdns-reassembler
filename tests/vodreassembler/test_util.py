@@ -25,29 +25,29 @@ class TestDataAssembler(unittest.TestCase):
     assembler = util.DataAssembler(2, length=5)
     with self.assertRaises(util.IncompleteDataError):
       assembler.getbytes()
-    self.assertEquals(b'\x00\x00\x00\x00\x00',
-                      assembler.getbytes(incomplete=True))
+    self.assertEqual(b'\x00\x00\x00\x00\x00',
+                     assembler.getbytes(incomplete=True))
     assembler.add(b'\x01\x02', 2)
     with self.assertRaises(util.IncompleteDataError):
       assembler.getbytes()
-    self.assertEquals(b'\x00\x00\x01\x02\x00',
-                      assembler.getbytes(incomplete=True))
+    self.assertEqual(b'\x00\x00\x01\x02\x00',
+                     assembler.getbytes(incomplete=True))
 
   def test_length_deduction(self):
     assembler = util.DataAssembler(3)
     self.assertIsNone(assembler.length)
     assembler.add(b'\xff\xfe', 0)
-    self.assertEquals(2, assembler.length)
-    self.assertEquals(b'\xff\xfe', assembler.getbytes())
+    self.assertEqual(2, assembler.length)
+    self.assertEqual(b'\xff\xfe', assembler.getbytes())
 
     assembler = util.DataAssembler(3)
     self.assertIsNone(assembler.length)
     assembler.add(b'\xff\xfe\xfd', 0)
     self.assertIsNone(assembler.length)
     assembler.add(b'\x01\x02', 6)
-    self.assertEquals(8, assembler.length)
+    self.assertEqual(8, assembler.length)
     assembler.add(b'\xfc\xfb\x00', 3)
-    self.assertEquals(b'\xff\xfe\xfd\xfc\xfb\x00\x01\x02', assembler.getbytes())
+    self.assertEqual(b'\xff\xfe\xfd\xfc\xfb\x00\x01\x02', assembler.getbytes())
 
   def test_incorrect_sized_chunks(self):
     assembler = util.DataAssembler(3)
@@ -60,8 +60,8 @@ class TestDataAssembler(unittest.TestCase):
       assembler.add(b'\x00' * (assembler.alignment - 1), 0)
     with self.assertRaises(ValueError):
       assembler.add(b'\x00' * (assembler.alignment + 1), 6)
-    self.assertEquals(b'\x00\x00\x00\xff\xfe\xfd',
-                      assembler.getbytes(incomplete=True))
+    self.assertEqual(b'\x00\x00\x00\xff\xfe\xfd',
+                     assembler.getbytes(incomplete=True))
     # Test with predefined length
     assembler = util.DataAssembler(3, length=5)
     with self.assertRaises(ValueError):
@@ -73,16 +73,16 @@ class TestDataAssembler(unittest.TestCase):
     with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00\x00\x00', 3)
     assembler.add(b'\xba\xbe', 3)
-    self.assertEquals(b'\x00\x00\x00\xba\xbe',
-                      assembler.getbytes(incomplete=True))
+    self.assertEqual(b'\x00\x00\x00\xba\xbe',
+                     assembler.getbytes(incomplete=True))
     assembler = util.DataAssembler(3, length=6)
     with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00', 3)
     with self.assertRaises(util.UnexpectedChunkLengthError):
       assembler.add(b'\x00\x00', 3)
     assembler.add(b'\xfe\xba\xbe', 3)
-    self.assertEquals(b'\x00\x00\x00\xfe\xba\xbe',
-                      assembler.getbytes(incomplete=True))
+    self.assertEqual(b'\x00\x00\x00\xfe\xba\xbe',
+                     assembler.getbytes(incomplete=True))
 
   def test_collisions(self):
     assembler = util.DataAssembler(3)
@@ -106,8 +106,8 @@ class TestDataAssembler(unittest.TestCase):
     with self.assertRaises(ValueError):
       assembler.add(b'\x00\x00\x00\x00', 6)
     assembler.add(b'\x00\x05', 6)  # same content
-    self.assertEquals(b'\x00\x03\x00\x00\x01\x00\x00\x05',
-                      assembler.getbytes())
+    self.assertEqual(b'\x00\x03\x00\x00\x01\x00\x00\x05',
+                     assembler.getbytes())
 
   def test_maligned_offsets(self):
     assembler = util.DataAssembler(3)
@@ -121,8 +121,8 @@ class TestDataAssembler(unittest.TestCase):
     with self.assertRaises(ValueError):
       assembler.add(b'\x00\x00\x00', 5)
     assembler.add(b'\xbe\x00\xff', 3)
-    self.assertEquals(b'\xca\xfe\xba\xbe\x00\xff',
-                      assembler.getbytes())
+    self.assertEqual(b'\xca\xfe\xba\xbe\x00\xff',
+                     assembler.getbytes())
 
   def test_out_of_bound_offsets(self):
     assembler = util.DataAssembler(3)
@@ -153,12 +153,12 @@ class TestDataAssembler(unittest.TestCase):
       assembler = util.DataAssembler(alignment, length=length)
       for chunk in sequence:
         assembler.add(chunk.data, chunk.offset)
-      self.assertEquals(data, assembler.getbytes())
+      self.assertEqual(data, assembler.getbytes())
       # Same test with add_chunk()
       assembler = util.DataAssembler(alignment, length=length)
       for chunk in sequence:
         assembler.add_chunk(chunk)
-      self.assertEquals(data, assembler.getbytes())
+      self.assertEqual(data, assembler.getbytes())
 
   def test_sized_add_3_1(self):
     self._test_sized_add(3, 1)
@@ -185,12 +185,12 @@ class TestDataAssembler(unittest.TestCase):
       assembler = util.DataAssembler(alignment)
       for chunk in sequence:
         assembler.add(chunk.data, chunk.offset)
-      self.assertEquals(data, assembler.getbytes())
+      self.assertEqual(data, assembler.getbytes())
       # Same test with add_chunk()
       assembler = util.DataAssembler(alignment)
       for chunk in sequence:
         assembler.add_chunk(chunk)
-      self.assertEquals(data, assembler.getbytes())
+      self.assertEqual(data, assembler.getbytes())
 
   def test_unsized_add_3_1(self):
     self._test_unsized_add(3, 1)
