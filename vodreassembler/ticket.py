@@ -30,7 +30,7 @@ class Ticket:
   @property
   def request_data(self):
     if self._ticket_data.request_data is None:
-      return
+      return None
     return self._ticket_data.request_data.getbytes()
 
   @property
@@ -43,16 +43,29 @@ class Ticket:
   @property
   def response_data(self):
     if self._ticket_data.response_data is None:
-      return
+      return None
     return self._ticket_data.response_data.getbytes()
+
+  @property
+  def is_binary(self):
+    try:
+      # If the first byte of the request is zero, the messages exchanged are
+      # both in utf-8 text. Otherwise, they must be binary.
+      if self.request_data is not None:
+        return self.request_data[0] != 0
+    except util.IncompleteDataError:
+      pass
+    return None
 
   def __repr__(self):
     return ('Ticket(id={!r}, collision={!r}, '
             'request_length={!r}, '
-            'response_length={!r})').format(self.ticket_id,
-                                            self.collision,
-                                            self.request_length,
-                                            self.response_length)
+            'response_length={!r}, '
+            'is_binary={!r})').format(self.ticket_id,
+                                      self.collision,
+                                      self.request_length,
+                                      self.response_length,
+                                      self.is_binary)
 
 
 class _TicketData:
