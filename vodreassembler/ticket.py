@@ -46,6 +46,14 @@ class Ticket:
       return
     return self._ticket_data.response_data.getbytes()
 
+  def __repr__(self):
+    return ('Ticket(id={!r}, collision={!r}, '
+            'request_length={!r}, '
+            'response_length={!r})').format(self.ticket_id,
+                                            self.collision,
+                                            self.request_length,
+                                            self.response_length)
+
 
 class _TicketData:
   def __init__(self, ticket_id):
@@ -142,6 +150,9 @@ class TicketDatabase:
 
   def __len__(self):
     return len(self._tickets)
+
+  def __repr__(self):
+    return '{' + ', '.join(map(repr, self)) + '}'
 
   def __iter__(self):
     # Use values, as keys are redundant.
