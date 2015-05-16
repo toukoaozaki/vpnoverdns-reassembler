@@ -74,6 +74,7 @@ def generate_ticket_db(dns_records):
 
 def pickle_ticket_db(ticket_db):
   print('Saving ticket database...')
+  # TODO(toukoaozaki): try considering a different format.
   return pickle.dumps(ticket_db)
 
 def compute_conversion_path(input_type, output_type):
