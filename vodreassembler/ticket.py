@@ -2,6 +2,7 @@
 
 from vodreassembler import util
 from vodreassembler import protocol
+import zlib
 
 
 class Ticket:
@@ -34,17 +35,28 @@ class Ticket:
     return self._ticket_data.request_data.getbytes()
 
   @property
-  def response_length(self):
+  def raw_response_length(self):
     if (self._ticket_data.response_length is None
         and self._ticket_data.response_data is not None):
       return self._ticket_data.response_data.length
     return self._ticket_data.response_length
 
   @property
-  def response_data(self):
+  def raw_response_data(self):
     if self._ticket_data.response_data is None:
       return None
     return self._ticket_data.response_data.getbytes()
+
+  @property
+  def response_data(self):
+    try:
+      data = self.raw_response_data
+      if data:
+        return zlib.decompress(data)
+
+    except util.IncompleteDataError:
+      pass
+    return None
 
   @property
   def is_binary(self):
@@ -60,11 +72,11 @@ class Ticket:
   def __repr__(self):
     return ('Ticket(id={!r}, collision={!r}, '
             'request_length={!r}, '
-            'response_length={!r}, '
+            'raw_response_length={!r}, '
             'is_binary={!r})').format(self.ticket_id,
                                       self.collision,
                                       self.request_length,
-                                      self.response_length,
+                                      self.raw_response_length,
                                       self.is_binary)
 
 

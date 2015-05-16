@@ -6,6 +6,7 @@ from vodreassembler import dnsrecord
 from vodreassembler import protocol
 from vodreassembler import ticket
 from vodreassembler import util
+import zlib
 
 
 class TestTicketDatabase(unittest.TestCase):
@@ -24,6 +25,7 @@ class TestTicketDatabase(unittest.TestCase):
   ]
   REQUEST_DATA = os.urandom(61)
   RESPONSE_DATA = os.urandom(100)
+  RAW_RESPONSE_DATA = zlib.compress(RESPONSE_DATA)
 
   def setUp(self):
     self._db = ticket.TicketDatabase()
@@ -69,8 +71,8 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertEqual(self.REQUEST_DATA, self._db[12345678].request_data)
 
   def test_build_from_records_response_data(self):
-    response_segments = [self.RESPONSE_DATA[i:i+48]
-                         for i in range(0, len(self.RESPONSE_DATA), 48)]
+    response_segments = [self.RAW_RESPONSE_DATA[i:i+48]
+                         for i in range(0, len(self.RAW_RESPONSE_DATA), 48)]
     records = []
     for i, segment in enumerate(response_segments):
       query_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
@@ -87,8 +89,10 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertIsNone(self._db[12345678].random_number)
     self.assertIsNone(self._db[12345678].request_data)
     self.assertIsNone(self._db[12345678].request_length)
-    self.assertEqual(len(self.RESPONSE_DATA),
-                     self._db[12345678].response_length)
+    self.assertEqual(len(self.RAW_RESPONSE_DATA),
+                     self._db[12345678].raw_response_length)
+    self.assertEqual(self.RAW_RESPONSE_DATA,
+                     self._db[12345678].raw_response_data)
     self.assertEqual(self.RESPONSE_DATA, self._db[12345678].response_data)
 
 if __name__ == '__main__':
