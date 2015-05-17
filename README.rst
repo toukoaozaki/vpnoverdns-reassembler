@@ -3,6 +3,11 @@
 ========================
 vpnoverdns-reassembler is Python library and command line tools for analyzing DNS records from VPN-over-DNS service. Currently, only reassembling tickets (message exchanges) from records are supported.
 
+Authors
+=======
+* Avi Prasad (aprasad6@illinois.edu)
+* Eunsoo Roh (roh7@illinois.edu)
+
 Requirements
 ============
 * Python 3.4+ with pip
@@ -52,3 +57,12 @@ For interactive inspection of the output from vodparse, you can do something lik
 Library
 =======
 Modules under vodreassembler/ are designed to be used as a library. Modules that might be the most useful include vodreassembler.ticket and vodreassembler.socket. Please refer to source code for public interfaces.
+
+Caveats
+=======
+There are the following caveats we have discovered during the development.
+
+1. Passive DNS dump as a data source does not retain any information on relative ordering, e.g. timestamps. This makes it almost impossible to handle when the same data source contains records with multiple different tickets having colliding identifiers.
+2. When some records are missing, responses cannot be reconstructed due to zlib compression.
+3. When some responses are missing in a particular TcpSocket session, it is almost impossible to recover HTTP payloads due to gzip (zlib) compression.
+4. TcpSocket control messages also do not contain any information on relative ordering. This makes reassembly practically impossible when a single HTTP transaction is performed over multiple ticket exchanges, mostly due to computational complexity; there are :math:`n!` permutations to consider for reassembly of :math:`n` tickets, which is asmptotically worse than exponential time. For example, :math:`15!` is already :math:`1307674368000`, which is an awful lot cases to consider for just one session.
