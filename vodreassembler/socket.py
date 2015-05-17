@@ -26,8 +26,7 @@ class SocketSession:
     socket_db = {}
     for ticket in ticket_db:
       try:
-        req_string, req_binary = _parse_request_data(ticket)
-        uuid, msgtype, *other_params = req_string.split('\xa7')
+        uuid, msgtype, *other_params = ticket.request_message.split('\xa7')
         uuid = int(uuid)
         # TODO(toukoaozaki): support other message types
         if msgtype == 'SocketData':
@@ -46,23 +45,3 @@ class SocketSession:
             'num_tickets={!r})').format(self.uuid,
                                         self.session_id,
                                         len(self.all_tickets))
-
-
-# Those utilities should be part of Ticket interface.
-# TODO(toukoaozaki): refactor code into Ticket interface.
-def _parse_request_data(ticket):
-  data = ticket.request_data
-  is_binary = ticket.is_binary
-  if data is None:
-    raise util.IncompleteDataError()
-  string_length = data[0]
-  assert (string_length != 0) == is_binary
-  return data[1:string_length+1].decode('utf-8'), data[string_length+1:] or None
-
-def _parse_response_data(data, is_binary):
-  if data is None:
-    raise util.IncompleteDataError()
-  if is_binary:
-    string_length = data[0]
-    return data[1:string_length+1].decode('utf-8'), data[string_length+1:]
-  return data.decode('utf-8'), None

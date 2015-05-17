@@ -8,6 +8,8 @@ import zlib
 class Ticket:
   def __init__(self, ticket_data):
     self._ticket_data = ticket_data
+    self._request = None
+    self._response = None
 
   @property
   def ticket_id(self):
@@ -22,17 +24,41 @@ class Ticket:
     return self._ticket_data.rn
 
   @property
-  def request_length(self):
+  def raw_request_length(self):
     if (self._ticket_data.request_length is None
         and self._ticket_data.request_data is not None):
       return self._ticket_data.request_data.length
     return self._ticket_data.request_length
 
   @property
-  def request_data(self):
+  def raw_request_data(self):
     if self._ticket_data.request_data is None:
       return None
     return self._ticket_data.request_data.getbytes()
+
+  @property
+  def request_data(self):
+    if not self._request:
+      self._request = self._parse_request_data()
+    return self._request[1]
+
+  @property
+  def request_message(self):
+    if not self._request:
+      self._request = self._parse_request_data()
+    return self._request[0]
+
+  def _parse_request_data(self):
+    data = self.raw_request_data
+    if data is None:
+      raise util.IncompleteDataError()
+    string_length = data[0]
+    if self.is_binary:
+      assert string_length != 0
+      return (data[1:string_length+1].decode('utf-8'), data[string_length+1:])
+    else:
+      assert string_length == 0
+      return (data[1:].decode('utf-8'), None)
 
   @property
   def raw_response_length(self):
@@ -49,33 +75,55 @@ class Ticket:
 
   @property
   def response_data(self):
-    try:
-      data = self.raw_response_data
-      if data:
-        return zlib.decompress(data)
+    if not self._response:
+      self._response = self._parse_response_data()
+    return self._response[1]
 
-    except util.IncompleteDataError:
-      pass
-    return None
+  @property
+  def response_message(self):
+    if not self._response:
+      self._response = self._parse_response_data()
+    return self._response[0]
+
+  def _parse_response_data(self):
+    data = self.raw_response_data
+    if data is None:
+      raise util.IncompleteDataError()
+    data = zlib.decompress(data)
+    # Binary flag in the response may be unknown. Here, we ar simply choosing to
+    # treate everything as text, then fall back if it doesn't work.
+    if not self.is_binary:
+      try:
+        result = (data.decode('utf-8'), None)
+        # If padded with null characters, message is probably binary...
+        if '\x00' not in result[0]:
+          return result
+      except UnicodeDecodeError:
+        pass
+    string_length = data[0]
+    if string_length + 1 <= len(data):
+      message = data[1:string_length+1].decode('utf-8')
+      payload = data[string_length+1:]
+      return (message, payload)
 
   @property
   def is_binary(self):
     try:
       # If the first byte of the request is zero, the messages exchanged are
       # both in utf-8 text. Otherwise, they must be binary.
-      if self.request_data is not None:
-        return self.request_data[0] != 0
+      if self.raw_request_data is not None:
+        return self.raw_request_data[0] != 0
     except util.IncompleteDataError:
       pass
     return None
 
   def __repr__(self):
     return ('Ticket(id={!r}, collision={!r}, '
-            'request_length={!r}, '
+            'raw_request_length={!r}, '
             'raw_response_length={!r}, '
             'is_binary={!r})').format(self.ticket_id,
                                       self.collision,
-                                      self.request_length,
+                                      self.raw_request_length,
                                       self.raw_response_length,
                                       self.is_binary)
 

@@ -1,12 +1,21 @@
 import binascii
 import os
 import random
+import struct
 import unittest
 from vodreassembler import dnsrecord
 from vodreassembler import protocol
 from vodreassembler import ticket
 from vodreassembler import util
 import zlib
+
+def random_string(length):
+  return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz\xa7')
+                 for _ in range(length))
+
+def length_prefixed_utf8(text):
+  result = text.encode('utf-8')
+  return struct.pack('B', len(result)) + result
 
 
 class TestTicketDatabase(unittest.TestCase):
@@ -23,9 +32,22 @@ class TestTicketDatabase(unittest.TestCase):
       dnsrecord.DnsRecord('bf-e0.wr-00000060.id-11695062.v0.tun.vpnoverdns.com.',
           'IN', 'A', '')
   ]
-  REQUEST_DATA = os.urandom(61)
-  RESPONSE_DATA = os.urandom(100)
-  RAW_RESPONSE_DATA = zlib.compress(RESPONSE_DATA)
+  TEXT_REQUEST_MESSAGE = random_string(60)
+  TEXT_REQUEST_DATA = None
+  TEXT_REQUEST = b'\x00' + TEXT_REQUEST_MESSAGE.encode('utf-8')
+  TEXT_RESPONSE_MESSAGE = random_string(100)
+  TEXT_RESPONSE_DATA = None
+  TEXT_RESPONSE = TEXT_RESPONSE_MESSAGE.encode('utf-8')
+  BINARY_REQUEST_MESSAGE = 'foie gras'
+  BINARY_REQUEST_DATA = os.urandom(51)
+  BINARY_REQUEST = (length_prefixed_utf8(BINARY_REQUEST_MESSAGE)
+                    + BINARY_REQUEST_DATA)
+  BINARY_RESPONSE_MESSAGE = random_string(70)
+  BINARY_RESPONSE_DATA = os.urandom(30)
+  BINARY_RESPONSE = (length_prefixed_utf8(BINARY_RESPONSE_MESSAGE)
+                     + BINARY_RESPONSE_DATA)
+  COMPRESSED_TEXT_RESPONSE = zlib.compress(TEXT_RESPONSE)
+  COMPRESSED_BINARY_RESPONSE = zlib.compress(BINARY_RESPONSE)
 
   def setUp(self):
     self._db = ticket.TicketDatabase()
@@ -38,7 +60,7 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertEqual(0xb273d6, self._db[0xb273d6].ticket_id)
     self.assertFalse(self._db[0xb273d6].collision)
     self.assertEqual(12345678, self._db[0xb273d6].random_number)
-    self.assertEqual(61, self._db[0xb273d6].request_length)
+    self.assertEqual(61, self._db[0xb273d6].raw_request_length)
     self.assertEqual(1, len(self._db))
 
   def test_build_from_records_ignores_error(self):
@@ -51,15 +73,15 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertNotIn(0xb273d6, self._db)
     self.assertEqual(0, len(self._db))
 
-  def test_build_from_records_request_data(self):
+  def test_build_from_records_text_request_data(self):
     payload = util.DataChunk(b'E\x00', 0)  # E0 means no error (success)
     queries = [
         protocol.Query.create(
             '0',
-            {'bf': binascii.hexlify(self.REQUEST_DATA[i:i+30]).decode('ascii'),
+            {'bf': binascii.hexlify(self.TEXT_REQUEST[i:i+30]).decode('ascii'),
              'wr': i,'id': 12345678},
             payload)
-        for i in range(0, len(self.REQUEST_DATA), 30)]
+        for i in range(0, len(self.TEXT_REQUEST), 30)]
     records = [q.encode() for q in queries]
     self._random.shuffle(records)
     self._db.build_from_records(records)
@@ -67,12 +89,42 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertEqual(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
-    self.assertEqual(len(self.REQUEST_DATA), self._db[12345678].request_length)
-    self.assertEqual(self.REQUEST_DATA, self._db[12345678].request_data)
+    self.assertEqual(len(self.TEXT_REQUEST),
+                     self._db[12345678].raw_request_length)
+    self.assertEqual(self.TEXT_REQUEST, self._db[12345678].raw_request_data)
+    self.assertEqual(self.TEXT_REQUEST_MESSAGE,
+                     self._db[12345678].request_message)
+    self.assertIsNone(self._db[12345678].request_data)
 
-  def test_build_from_records_response_data(self):
-    response_segments = [self.RAW_RESPONSE_DATA[i:i+48]
-                         for i in range(0, len(self.RAW_RESPONSE_DATA), 48)]
+  def test_build_from_records_binary_request_data(self):
+    payload = util.DataChunk(b'E\x00', 0)  # E0 means no error (success)
+    queries = [
+        protocol.Query.create(
+            '0',
+            {'bf': binascii.hexlify(
+                self.BINARY_REQUEST[i:i+30]).decode('ascii'),
+             'wr': i,'id': 12345678},
+            payload)
+        for i in range(0, len(self.BINARY_REQUEST), 30)]
+    records = [q.encode() for q in queries]
+    self._random.shuffle(records)
+    self._db.build_from_records(records)
+    self.assertIn(12345678, self._db)
+    self.assertEqual(12345678, self._db[12345678].ticket_id)
+    self.assertFalse(self._db[12345678].collision)
+    self.assertIsNone(self._db[12345678].random_number)
+    self.assertEqual(len(self.BINARY_REQUEST),
+                     self._db[12345678].raw_request_length)
+    self.assertEqual(self.BINARY_REQUEST, self._db[12345678].raw_request_data)
+    self.assertEqual(self.BINARY_REQUEST_MESSAGE,
+                     self._db[12345678].request_message)
+    self.assertEqual(self.BINARY_REQUEST_DATA,
+                     self._db[12345678].request_data)
+
+  def test_build_from_records_text_response_data(self):
+    compressed_length = len(self.COMPRESSED_TEXT_RESPONSE)
+    response_segments = [self.COMPRESSED_TEXT_RESPONSE[i:i+48]
+                         for i in range(0, compressed_length, 48)]
     records = []
     for i, segment in enumerate(response_segments):
       query_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
@@ -87,13 +139,45 @@ class TestTicketDatabase(unittest.TestCase):
     self.assertEqual(12345678, self._db[12345678].ticket_id)
     self.assertFalse(self._db[12345678].collision)
     self.assertIsNone(self._db[12345678].random_number)
-    self.assertIsNone(self._db[12345678].request_data)
-    self.assertIsNone(self._db[12345678].request_length)
-    self.assertEqual(len(self.RAW_RESPONSE_DATA),
+    self.assertIsNone(self._db[12345678].raw_request_data)
+    self.assertIsNone(self._db[12345678].raw_request_length)
+    self.assertEqual(len(self.COMPRESSED_TEXT_RESPONSE),
                      self._db[12345678].raw_response_length)
-    self.assertEqual(self.RAW_RESPONSE_DATA,
+    self.assertEqual(self.COMPRESSED_TEXT_RESPONSE,
                      self._db[12345678].raw_response_data)
-    self.assertEqual(self.RESPONSE_DATA, self._db[12345678].response_data)
+    self.assertIsNone(self._db[12345678].response_data)
+    self.assertEqual(self.TEXT_RESPONSE_MESSAGE,
+                     self._db[12345678].response_message)
+
+  def test_build_from_records_binary_response_data(self):
+    compressed_length = len(self.COMPRESSED_BINARY_RESPONSE)
+    response_segments = [self.COMPRESSED_BINARY_RESPONSE[i:i+48]
+                         for i in range(0, compressed_length, 48)]
+    records = []
+    for i, segment in enumerate(response_segments):
+      query_vars = {'ln': len(segment), 'rd': i*48, 'id': 12345678}
+      for off in range(0, len(segment), 3):
+        query = protocol.Query.create('0', query_vars,
+                                      util.DataChunk(segment[off:off+3], off))
+        records.append(query.encode())
+
+    self._random.shuffle(records)
+    self._db.build_from_records(records)
+    self.assertIn(12345678, self._db)
+    self.assertEqual(12345678, self._db[12345678].ticket_id)
+    self.assertFalse(self._db[12345678].collision)
+    self.assertIsNone(self._db[12345678].random_number)
+    self.assertIsNone(self._db[12345678].raw_request_data)
+    self.assertIsNone(self._db[12345678].raw_request_length)
+    self.assertEqual(len(self.COMPRESSED_BINARY_RESPONSE),
+                     self._db[12345678].raw_response_length)
+    self.assertEqual(self.COMPRESSED_BINARY_RESPONSE,
+                     self._db[12345678].raw_response_data)
+    self.assertEqual(self.BINARY_RESPONSE_DATA,
+                     self._db[12345678].response_data)
+    self.assertEqual(self.BINARY_RESPONSE_MESSAGE,
+                     self._db[12345678].response_message)
+
 
 if __name__ == '__main__':
   unittest.main()
